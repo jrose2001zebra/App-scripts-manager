@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Apps Script Manager V2.12</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
+*{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
+header{padding:max(18px,env(safe-area-inset-top)) 18px 16px;background:#fff;border-bottom:1px solid #dbe3ec;position:sticky;top:0;z-index:5}
+h1{font-size:24px;margin:3px 0}.sub{color:#64748b;font-size:14px}
+main{max-width:760px;margin:auto;padding:16px 16px calc(28px + env(safe-area-inset-bottom))}
+.card{background:#fff;border:1px solid #dce4ed;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px rgba(15,23,42,.06)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grow{flex:1}
+label{display:block;font-size:12px;font-weight:700;color:#64748b;margin:10px 0 5px}
+input,select{width:100%;font-size:16px;padding:12px;border:1px solid #cbd5e1;border-radius:12px;background:#fff}
+button{border:0;border-radius:12px;padding:12px 14px;font-size:15px;font-weight:750;background:#e2e8f0;color:#172033}
+button.primary{background:#2563eb;color:white}button.good{background:#15803d;color:#fff}button.danger{background:#b91c1c;color:#fff}
+button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radius:12px;background:#f1f5f9;white-space:pre-wrap}
+.project{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:13px 0;border-top:1px solid #edf2f7}.project:first-child{border-top:0}
+.name{font-weight:800}.meta{font-size:12px;color:#64748b;margin-top:3px;word-break:break-all}
+.actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.actions button{padding:9px 10px;font-size:13px}
+.small{font-size:12px;color:#64748b}.hidden{display:none}
+#fileName{font-weight:700;color:#0f766e} #discovered{max-height:420px;overflow:auto;margin-top:6px}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:16px}.modal.hidden{display:none}.sheet{background:#fff;width:min(720px,100%);max-height:82vh;overflow:auto;border-radius:22px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.deployChoice{border:2px solid #e2e8f0;border-radius:16px;padding:14px;margin-top:10px}.deployChoice.saved{border-color:#2563eb;background:#eff6ff}.deployTitle{font-weight:850}.deployMeta{font-size:13px;color:#475569;line-height:1.45;margin-top:5px;word-break:break-word}.deployId{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#64748b;word-break:break-all;margin-top:7px}.deployChoice button{width:100%;margin-top:10px}.badge{display:inline-block;font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1d4ed8;margin-left:6px}
+#status{overflow-wrap:anywhere;word-break:normal}
+#status a{display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-word;color:#1d4ed8;text-decoration:underline;margin-top:5px}
+</style>
+</head>
+<body>
+<header><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.12</span></h1><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<main>
+<section class="card">
+  <div class="row">
+    <button id="auth" class="primary">Connect Google</button>
+    <button id="signout" class="hidden">Disconnect</button>
+    <span id="authState" class="small grow">Not connected</span>
+  </div>
+</section>
+
+<section class="card">
+  <h2 style="margin:0 0 8px;font-size:18px">One-time setup</h2>
+  <label>Google OAuth Web Client ID</label>
+  <input id="clientId" placeholder="123456789-...apps.googleusercontent.com">
+  <div class="small" style="margin-top:8px">Stored only in this browser. Your authorized JavaScript origin must match the site where this manager is hosted.</div>
+  <div class="row" style="margin-top:10px"><button id="saveClient">Save Client ID</button></div>
+</section>
+
+<section class="card">
+  <div class="row"><h2 style="margin:0;font-size:18px" class="grow">1. Choose Project</h2><button id="discoverBtn" class="primary">Find Projects</button></div>
+  <div class="small" style="margin-top:8px">Tap <b>Find Projects</b> to load the Apps Script projects in your Google account, then tap <b>Select</b> beside the project you want to update.</div>
+  <input id="projectSearch" placeholder="Search projects" style="margin-top:12px" class="hidden">
+  <div id="discovered"></div>
+  <details style="margin-top:12px"><summary class="small" style="font-weight:800;cursor:pointer">Advanced: add a project manually</summary>
+    <div style="margin-top:10px"><label>Display name</label><input id="pName" placeholder="Dig Dug">
+    <label>Script ID</label><input id="scriptId" placeholder="Apps Script project Script ID">
+    <label>Deployment ID</label><input id="deploymentId" placeholder="Existing web-app deployment ID">
+    <div class="row" style="margin-top:12px"><button id="addProject">Select Manual Project</button></div></div>
+  </details>
+</section>
+
+<section class="card">
+  <h2 style="margin:0 0 8px;font-size:18px">2. Choose New HTML File</h2>
+  <div id="selected" class="status">No project selected yet.</div>
+  <div class="small" style="margin-top:10px">Choose the new HTML file for the selected project. Its contents will replace the Apps Script project's <b>Index.html</b>; the local filename does not matter.</div>
+  <label>New HTML file</label>
+  <input id="htmlFile" type="file" accept=".html,text/html">
+  <div id="fileName" class="small" style="margin-top:8px">No file selected</div>
+  <label>Version description</label>
+  <input id="description" placeholder="e.g. Dig Dug V2.16">
+  <h2 style="margin:18px 0 6px;font-size:18px">3. Update &amp; Deploy</h2>
+  <div class="small">This creates a new Apps Script version and updates the project's existing Web App deployment, keeping the same published URL.</div>
+  <div class="row" style="margin-top:12px"><button id="deploy" class="good" disabled>UPDATE &amp; DEPLOY</button></div>
+  <div id="status" class="status" style="margin-top:12px">Ready.</div>
+</section>
+</main>
+<div id="deploymentModal" class="modal hidden"><div class="sheet"><div class="row"><h2 id="deploymentTitle" style="margin:0;font-size:20px" class="grow">Choose Web App deployment</h2><button id="closeDeployment">Cancel</button></div><div class="small" style="margin-top:7px">This project has more than one published Web App. Choose the deployment whose existing URL you want to keep updating.</div><div id="deploymentChoices"></div></div></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const SCOPES='https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/script.deployments https://www.googleapis.com/auth/drive.metadata.readonly';
+const API='https://script.googleapis.com/v1';
+let tokenClient=null, accessToken='', tokenExpiresAt=0, selectedIndex=-1, selectedHtml='';
+const $=id=>document.getElementById(id);
+let projects=JSON.parse(localStorage.getItem('asm.projects')||'[]');
+$('clientId').value=localStorage.getItem('asm.clientId')||'';
+
+function setStatus(x){$('status').textContent=x}
+function setDeploySuccess(name,deployedAt,publishedUrl){
+  const box=$('status');
+  box.textContent=`✅ ${name} updated successfully.\nDeployed ${deployedAt}`;
+  if(!publishedUrl){box.append(document.createTextNode(' · Same published URL.'));return}
+  box.append(document.createTextNode('\nPublished link:')); 
+  const link=document.createElement('a');
+  link.href=publishedUrl;
+  link.textContent=publishedUrl;
+  link.target='_blank';
+  link.rel='noopener noreferrer';
+  box.appendChild(link);
+}
+function save(){localStorage.setItem('asm.projects',JSON.stringify(projects))}
+function initTokenClient(){
+  const clientId=$('clientId').value.trim();
+  if(!clientId){alert('Enter and save your OAuth Web Client ID first.');return false}
+  if(!window.google?.accounts?.oauth2){alert('Google sign-in library is still loading. Try again in a moment.');return false}
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:clientId,scope:SCOPES,
+    callback:r=>{
+      if(r.error){setStatus('Authorization error: '+r.error);return}
+      accessToken=r.access_token;
+      tokenExpiresAt=Date.now()+((Number(r.expires_in)||3600)*1000);
+      sessionStorage.setItem('asm.accessToken',accessToken);
+      sessionStorage.setItem('asm.tokenExpiresAt',String(tokenExpiresAt));
+      $('authState').textContent='Connected';
+      $('auth').textContent='Reconnect Google';
+      $('signout').classList.remove('hidden');
+      refreshDeployButton();
+    }
+  });
+  return true;
+}
+$('saveClient').onclick=()=>{localStorage.setItem('asm.clientId',$('clientId').value.trim());tokenClient=null;setStatus('Client ID saved. Tap Connect Google.')}
+$('auth').onclick=()=>{if(initTokenClient()) tokenClient.requestAccessToken({prompt:accessToken?'':'consent'})}
+$('signout').onclick=()=>{if(accessToken) google.accounts.oauth2.revoke(accessToken);accessToken='';tokenExpiresAt=0;sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');$('authState').textContent='Not connected';$('signout').classList.add('hidden');refreshDeployButton()}
+
+
+let discoveredProjects=[];
+async function googleApi(url){
+  const r=await fetch(url,{headers:{Authorization:'Bearer '+accessToken}});
+  const body=await r.text(); let data={}; try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
+  if(!r.ok) throw new Error(data?.error?.message||body||('HTTP '+r.status));
+  return data;
+}
+async function discoverProjects(){
+  if(!accessToken){setStatus('Connect Google first.');return}
+  $('discoverBtn').disabled=true;$('discovered').innerHTML='<div class="small" style="padding-top:12px">Searching Google Drive…</div>';
+  try{
+    let all=[],pageToken='';
+    do{
+      const q=encodeURIComponent("mimeType='application/vnd.google-apps.script' and trashed=false");
+      let url=`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&pageSize=1000&orderBy=modifiedTime%20desc&fields=nextPageToken,files(id,name,modifiedTime,ownedByMe,webViewLink)`;
+      if(pageToken)url+='&pageToken='+encodeURIComponent(pageToken);
+      const d=await googleApi(url); all.push(...(d.files||[])); pageToken=d.nextPageToken||'';
+    }while(pageToken);
+    discoveredProjects=all; renderDiscovered();
+    $('projectSearch').classList.toggle('hidden',!all.length);
+    setStatus(all.length?`Found ${all.length} Apps Script project${all.length===1?'':'s'}. Choose one with Select.`:'No standalone Apps Script projects were found in this account.');
+  }catch(e){
+    $('discovered').innerHTML='';
+    const extra=/drive/i.test(e.message)?'\n\nIf the Google Drive API is not enabled for the Apps Script Manager Cloud project, enable it once and retry.':'';
+    setStatus('❌ Could not list projects.\n'+e.message+extra);
+  }finally{$('discoverBtn').disabled=false}
+}
+function renderDiscovered(){
+  const term=$('projectSearch').value.trim().toLowerCase(); const box=$('discovered');box.innerHTML='';
+  const list=discoveredProjects.filter(p=>!term||p.name.toLowerCase().includes(term));
+  if(!list.length){box.innerHTML='<div class="small" style="padding-top:12px">No matching projects.</div>';return}
+  list.forEach(p=>{
+    const savedIndex=projects.findIndex(x=>x.scriptId===p.id); const d=document.createElement('div');d.className='project';
+    d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">${p.ownedByMe===false?'Shared project':'My project'}${p.modifiedTime?' · '+new Date(p.modifiedTime).toLocaleDateString():''}</div></div><div class="actions"><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
+    box.appendChild(d);
+  });
+  box.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>prepareDiscovered(b.dataset.auto));
+}
+async function prepareDiscovered(scriptId){
+  const p=discoveredProjects.find(x=>x.id===scriptId); if(!p)return;
+  setStatus(`Checking ${p.name} deployments…`);
+  try{
+    const d=await api(`/projects/${encodeURIComponent(scriptId)}/deployments`);
+    const web=(d.deployments||[]).filter(x=>Array.isArray(x.entryPoints)&&x.entryPoints.some(e=>e.entryPointType==='WEB_APP'));
+    if(!web.length){setStatus(`⚠️ ${p.name} has no Web App deployment yet. You can still add it manually after creating a deployment in Apps Script.`);return}
+
+    // Apps Script also returns its special HEAD/unversioned deployment. It can
+    // expose a WEB_APP entry point, but it is not the immutable versioned
+    // deployment that this manager should keep repointing. Prefer only
+    // deployments that have a real numeric versionNumber.
+    const versioned=web.filter(x=>Number.isInteger(x?.deploymentConfig?.versionNumber)&&x.deploymentConfig.versionNumber>0);
+    const candidates=versioned.length?versioned:web;
+    let chosen=candidates[0];
+    if(candidates.length>1){
+      chosen=await chooseDeployment(p,candidates);
+      if(!chosen){setStatus(`No deployment selected for ${p.name}. Nothing changed.`);return}
+    }
+    saveDiscoveredProject(p,scriptId,chosen);
+  }catch(e){setStatus(`❌ Could not read ${p.name}.\n${e.message}`)}
+}
+
+function webEntry(dep){return (dep.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')||{}}
+function deploymentUrl(dep){
+  // A published Web App's /exec URL is determined by its immutable deployment ID.
+  // Do not use the Apps Script API's entry-point URL: it may point to /dev or
+  // otherwise differ from the published deployment URL.
+  const id=dep?.deploymentId;
+  return id && id!=='HEAD' ? `https://script.google.com/macros/s/${encodeURIComponent(id)}/exec` : '';
+}
+function fmtDate(v){if(!v)return '';const d=new Date(v);if(Number.isNaN(d.getTime())||d.getFullYear()<2000)return '';return d.toLocaleString()}
+function saveDiscoveredProject(p,scriptId,chosen){
+  let i=projects.findIndex(x=>x.scriptId===scriptId);
+  const rec={name:p.name,scriptId,deploymentId:chosen.deploymentId};
+  if(i<0){projects.push(rec);i=projects.length-1}else projects[i]=rec;
+  save();selectProject(i);setStatus(`✅ ${p.name} ready. Choose the new HTML file below.`);
+}
+function chooseDeployment(p,web){
+  return new Promise(resolve=>{
+    const modal=$('deploymentModal'),box=$('deploymentChoices');
+    const saved=projects.find(x=>x.scriptId===p.id)?.deploymentId||'';
+    $('deploymentTitle').textContent=`${p.name}: choose deployment`; box.innerHTML='';
+    web.forEach((dep,idx)=>{
+      const cfg=dep.deploymentConfig||{}; const url=deploymentUrl(dep); const isSaved=dep.deploymentId===saved;
+      const card=document.createElement('div'); card.className='deployChoice'+(isSaved?' saved':'');
+      const desc=cfg.description||'Web App'; const ver=cfg.versionNumber!=null?`Version ${cfg.versionNumber}`:'Version not shown';
+      const when=fmtDate(dep.updateTime||dep.createTime);
+      card.innerHTML=`<div class="deployTitle">${esc(desc)}${isSaved?'<span class="badge">CURRENTLY SAVED</span>':''}</div><div class="deployMeta">${esc(ver)}${when?' · Updated '+esc(when):''}${url?'<br>Published URL available':''}</div><div class="deployId">${esc(dep.deploymentId)}</div><button class="primary">Use this deployment</button>${url?'<button data-open="1">Open published app</button>':''}`;
+      card.querySelector('.primary').onclick=()=>{modal.classList.add('hidden');resolve(dep)};
+      const ob=card.querySelector('[data-open]');if(ob)ob.onclick=()=>window.open(url,'_blank','noopener');
+      box.appendChild(card);
+    });
+    modal.classList.remove('hidden');
+    $('closeDeployment').onclick=()=>{modal.classList.add('hidden');resolve(null)};
+  });
+}
+
+$('discoverBtn').onclick=discoverProjects;
+$('projectSearch').oninput=renderDiscovered;
+
+$('addProject').onclick=()=>{
+  const p={name:$('pName').value.trim(),scriptId:$('scriptId').value.trim(),deploymentId:$('deploymentId').value.trim()};
+  if(!p.name||!p.scriptId||!p.deploymentId){alert('Name, Script ID, and Deployment ID are required.');return}
+  let i=projects.findIndex(x=>x.scriptId===p.scriptId);
+  if(i<0){projects.push(p);i=projects.length-1}else projects[i]=p;
+  save(); selectProject(i); $('pName').value=$('scriptId').value=$('deploymentId').value='';
+  setStatus(`✅ ${p.name} selected. Choose the new HTML file.`);
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function selectProject(i){selectedIndex=i;$('selected').textContent='Updating: '+projects[i].name;refreshDeployButton();$('htmlFile').scrollIntoView({behavior:'smooth',block:'center'})}
+$('htmlFile').onchange=async e=>{const f=e.target.files[0];selectedHtml=f?await f.text():'';$('fileName').textContent=f?`${f.name} — ${(f.size/1024).toFixed(0)} KB`:'No file selected';if(f&&!$('description').value)$('description').value=f.name.replace(/\.html$/i,'');refreshDeployButton()}
+function refreshDeployButton(){$('deploy').disabled=!(accessToken&&selectedIndex>=0&&selectedHtml)}
+async function api(path,opt={}){
+  const r=await fetch(API+path,{...opt,headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json',...(opt.headers||{})}});
+  const body=await r.text(); let data={}; try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
+  if(!r.ok) throw new Error(data?.error?.message||body||('HTTP '+r.status));
+  return data;
+}
+async function updateAndDeploy(){
+  const p=projects[selectedIndex]; if(!p||!selectedHtml)return;
+  $('deploy').disabled=true;
+  let failedStep='Step 1 — Verifying existing deployment';
+  try{
+    setStatus('1/5 Verifying existing deployment…');
+    const existingDeployment=await api(`/projects/${encodeURIComponent(p.scriptId)}/deployments/${encodeURIComponent(p.deploymentId)}`);
+    if(existingDeployment?.deploymentConfig?.scriptId && existingDeployment.deploymentConfig.scriptId!==p.scriptId)
+      throw new Error('That Deployment ID does not belong to this Script ID. Nothing was changed.');
+    if(!Array.isArray(existingDeployment?.entryPoints) || !existingDeployment.entryPoints.some(e=>e.entryPointType==='WEB_APP'))
+      throw new Error('That deployment is not a Web App deployment. Nothing was changed.');
+
+    failedStep='Step 2 — Reading existing project';
+    setStatus('2/5 Reading existing project…');
+    const content=await api(`/projects/${encodeURIComponent(p.scriptId)}/content`);
+    const files=content.files||[];
+    let html=files.find(f=>f.name==='Index'&&f.type==='HTML');
+    if(!html){html={name:'Index',type:'HTML',source:selectedHtml};files.push(html)} else html.source=selectedHtml;
+    if(!files.some(f=>f.name==='appsscript'&&f.type==='JSON')) throw new Error('Project manifest appsscript.json was not returned. Nothing was changed.');
+
+    failedStep='Step 3 — Updating Index.html';
+    const uploadBody=JSON.stringify({files});
+    const htmlBytes=new Blob([selectedHtml]).size;
+    const requestBytes=new Blob([uploadBody]).size;
+    const uploadStarted=performance.now();
+    setStatus(`3/5 Updating Index.html…\n\nDiagnostics:\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nWaiting for Google response…`);
+    try{
+      await api(`/projects/${encodeURIComponent(p.scriptId)}/content`,{method:'PUT',body:uploadBody});
+    }catch(uploadError){
+      const elapsed=((performance.now()-uploadStarted)/1000).toFixed(1);
+      const kind=uploadError instanceof TypeError?'Browser/network fetch failure':'Google API response/error';
+      throw new Error(`${uploadError.message}\n\nUpload diagnostics:\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nFailure type: ${kind}\nFailed after: ${elapsed} seconds`);
+    }
+
+    failedStep='Step 4 — Creating immutable version';
+    setStatus('4/5 Creating immutable version…');
+    const version=await api(`/projects/${encodeURIComponent(p.scriptId)}/versions`,{method:'POST',body:JSON.stringify({description:$('description').value.trim()||'Mobile update'})});
+
+    failedStep='Step 5 — Updating existing deployment';
+    setStatus(`5/5 Updating existing deployment to version ${version.versionNumber}…`);
+    const updatedDeployment=await api(`/projects/${encodeURIComponent(p.scriptId)}/deployments/${encodeURIComponent(p.deploymentId)}`,{
+      method:'PUT',
+      body:JSON.stringify({deploymentConfig:{scriptId:p.scriptId,versionNumber:version.versionNumber,manifestFileName:'appsscript',description:$('description').value.trim()||'Mobile update'}})
+    });
+    const deployedAt=new Date().toLocaleString([], {month:'numeric',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+    const publishedUrl=deploymentUrl(updatedDeployment)||deploymentUrl(existingDeployment);
+    setDeploySuccess(p.name,deployedAt,publishedUrl);
+  }catch(e){setStatus('❌ Update stopped at '+failedStep+'.\n'+e.message+'\n\nIf code was updated before a later step failed, the existing deployment was not repointed unless Step 5 completed.');}
+  refreshDeployButton();
+}
+$('deploy').onclick=()=>{const p=projects[selectedIndex];if(confirm(`Update ${p.name}'s Index.html and repoint its EXISTING deployment?`))updateAndDeploy()}
+
+(()=>{const t=sessionStorage.getItem('asm.accessToken'),e=Number(sessionStorage.getItem('asm.tokenExpiresAt')||0);if(t&&e>Date.now()+30000){accessToken=t;tokenExpiresAt=e;$('authState').textContent='Connected';$('auth').textContent='Reconnect Google';$('signout').classList.remove('hidden');refreshDeployButton()}else{sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt')}})();
+</script>
+</body>
+</html>
