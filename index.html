@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.34</title>
+<title>Apps Script Manager V2.35</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -68,7 +68,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.34</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.35</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card" style="padding:13px 16px">
   <details id="googleSettings">
@@ -139,6 +139,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 const SCOPES='https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/script.deployments https://www.googleapis.com/auth/drive.metadata.readonly';
 const API='https://script.googleapis.com/v1';
 let tokenClient=null, accessToken='', tokenExpiresAt=0, selectedIndex=-1, selectedHtml='';
+let selectionRequestId=0,pendingProject=null;
 const $=id=>document.getElementById(id);
 let projects=JSON.parse(localStorage.getItem('asm.projects')||'[]');
 let hiddenProjectIds=JSON.parse(localStorage.getItem('asm.hiddenProjects')||'[]');
@@ -240,6 +241,11 @@ function hideDiscoveredProject(id,name){
   if(!confirm(`Remove "${name}" from this manager?\n\nYou can restore it later under Advanced → Removed projects. The Google Apps Script project itself will not be deleted.`))return;
   if(!isHiddenProject(id))hiddenProjectIds.push({id,name});
   saveHiddenProjects();
+  if(pendingProject?.scriptId===id){
+    ++selectionRequestId;pendingProject=null;selectedIndex=-1;
+    $('selected').querySelector('.selectedName').textContent='No project selected yet';
+    refreshSelectedPublished();refreshDeployButton();
+  }
   const savedIndex=projects.findIndex(x=>x.scriptId===id);
   if(savedIndex>=0){
     projects.splice(savedIndex,1); save();
@@ -288,9 +294,16 @@ function renderDiscovered(){
 
 async function prepareDiscovered(scriptId){
   const p=discoveredProjects.find(x=>x.id===scriptId); if(!p)return;
-  setStatus(`Checking ${p.name} deployments…`);
+  const requestId=++selectionRequestId;
+  pendingProject={name:p.name,scriptId};
+  selectedIndex=-1;
+  $('selected').querySelector('.selectedName').textContent=p.name;
+  refreshSelectedPublished();refreshDeployButton();
+  setStatus(`Checking ${p.name} deployments… You can choose the new HTML file while this finishes.`);
+  scrollToUpdating();
   try{
     const d=await api(`/projects/${encodeURIComponent(scriptId)}/deployments`);
+    if(requestId!==selectionRequestId)return;
     const web=(d.deployments||[]).filter(x=>Array.isArray(x.entryPoints)&&x.entryPoints.some(e=>e.entryPointType==='WEB_APP'));
     if(!web.length){setStatus(`⚠️ ${p.name} has no Web App deployment yet. You can still add it manually after creating a deployment in Apps Script.`);return}
 
@@ -303,10 +316,11 @@ async function prepareDiscovered(scriptId){
     let chosen=candidates[0];
     if(candidates.length>1){
       chosen=await chooseDeployment(p,candidates);
-      if(!chosen){setStatus(`No deployment selected for ${p.name}. Nothing changed.`);return}
+      if(requestId!==selectionRequestId)return;
+      if(!chosen){setStatus(`No deployment selected for ${p.name}. Select the project again to choose one.`);return}
     }
-    saveDiscoveredProject(p,scriptId,chosen);
-  }catch(e){setStatus(`❌ Could not read ${p.name}.\n${e.message}`)}
+    saveDiscoveredProject(p,scriptId,chosen,false);
+  }catch(e){if(requestId===selectionRequestId)setStatus(`❌ Could not read ${p.name}.\n${e.message}`)}
 }
 
 function webEntry(dep){return (dep.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')||{}}
@@ -324,11 +338,11 @@ function deploymentUrl(dep){
   return e?.webApp?.url||e?.webApp?.entryPointConfig?.url||'';
 }
 function fmtDate(v){if(!v)return '';const d=new Date(v);if(Number.isNaN(d.getTime())||d.getFullYear()<2000)return '';return d.toLocaleString()}
-function saveDiscoveredProject(p,scriptId,chosen){
+function saveDiscoveredProject(p,scriptId,chosen,scroll=true){
   let i=projects.findIndex(x=>x.scriptId===scriptId);
   const rec={name:p.name,scriptId,deploymentId:chosen.deploymentId};
   if(i<0){projects.push(rec);i=projects.length-1}else projects[i]=rec;
-  save();selectProject(i);setStatus(`✅ ${p.name} ready. Choose the new HTML file below.`);
+  save();selectProject(i,scroll);setStatus(selectedHtml?`✅ ${p.name} ready. Your HTML file is selected; you can Update & Deploy.`:`✅ ${p.name} ready. Choose the new HTML file below.`);
 }
 function chooseDeployment(p,web){
   return new Promise(resolve=>{
@@ -484,7 +498,17 @@ function refreshSelectedPublished(){
   link.textContent=url;
   wrap.classList.remove('hidden');
 }
-function selectProject(i){selectedIndex=i;$('selected').querySelector('.selectedName').textContent=projects[i].name;refreshSelectedPublished();refreshDeployButton();$('htmlFile').scrollIntoView({behavior:'smooth',block:'center'})}
+function scrollToUpdating(){
+  const section=$('selected').closest('.card');
+  const top=section.getBoundingClientRect().top+window.scrollY-document.querySelector('header').getBoundingClientRect().height-12;
+  window.scrollTo({top:Math.max(0,top),behavior:'auto'});
+}
+function selectProject(i,scroll=true){
+  ++selectionRequestId;pendingProject=null;selectedIndex=i;
+  $('selected').querySelector('.selectedName').textContent=projects[i].name;
+  refreshSelectedPublished();refreshDeployButton();
+  if(scroll)scrollToUpdating();
+}
 $('copyPublishedLink').onclick=async()=>{
   const url=selectedProjectUrl(); if(!url)return;
   try{await navigator.clipboard.writeText(url);setStatus('✅ Published link copied.')}
@@ -501,7 +525,7 @@ $('sharePublishedLink').onclick=async()=>{
 };
 
 $('htmlFile').onchange=async e=>{const f=e.target.files[0];selectedHtml=f?await f.text():'';$('fileName').textContent=f?`${f.name} — ${(f.size/1024).toFixed(0)} KB`:'No file selected';$('description').value=f?f.name.replace(/\.html$/i,''):'';refreshDeployButton()}
-function refreshDeployButton(){$('deploy').disabled=!(accessToken&&selectedIndex>=0&&selectedHtml)}
+function refreshDeployButton(){$('deploy').disabled=!(accessToken&&!pendingProject&&selectedIndex>=0&&selectedHtml)}
 async function api(path,opt={}){
   const r=await fetch(API+path,{...opt,headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json',...(opt.headers||{})}});
   const body=await r.text(); let data={}; try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
@@ -597,7 +621,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.34.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.35.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
