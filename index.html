@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.32</title>
+<title>Apps Script Manager V2.36</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -26,7 +26,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 #fileName{font-weight:700;color:#0f766e} #discovered{max-height:420px;overflow:auto;margin-top:6px}
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding:16px}.modal.hidden{display:none}.sheet{background:#fff;width:min(720px,100%);max-height:82vh;overflow:auto;border-radius:22px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.deployChoice{border:2px solid #e2e8f0;border-radius:16px;padding:14px;margin-top:10px}.deployChoice.saved{border-color:#2563eb;background:#eff6ff}.deployTitle{font-weight:850}.deployMeta{font-size:13px;color:#475569;line-height:1.45;margin-top:5px;word-break:break-word}.deployId{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#64748b;word-break:break-all;margin-top:7px}.deployChoice button{width:100%;margin-top:10px}.badge{display:inline-block;font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1d4ed8;margin-left:6px}
 #status{overflow-wrap:anywhere;word-break:normal}
-#selected{background:#f1f5f9;padding:11px 12px;border-radius:12px;margin:12px 0;font-size:14px;color:#172033;overflow-wrap:anywhere}
+#selected{background:#fff1f1;padding:11px 12px;border-radius:12px;margin:12px 0;font-size:14px;color:#172033;overflow-wrap:anywhere}
 #selected .selectedName{font-weight:700}
 #googleSettings summary{cursor:pointer;font-weight:750;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px}
 #googleSettings summary::-webkit-details-marker{display:none}
@@ -46,14 +46,29 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 .selectedPublishedCompact{display:block;width:100%;font-size:12px;line-height:1.25;color:#2563eb;text-decoration:underline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 7px}
 .publishedActions{gap:8px}
 .publishedActions button{padding:8px 12px;font-size:13px}
-.connectionLight{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 5px 1px 7px;vertical-align:middle;box-shadow:0 0 0 2px rgba(100,116,139,.12)}
+.connectionLight{display:inline-block;width:12px;height:12px;border-radius:50%;margin:0 5px 1px 7px;vertical-align:middle;box-shadow:0 0 0 2px rgba(100,116,139,.12)}
 .connectionLight.on{background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.15),0 0 7px rgba(34,197,94,.55)}
 .connectionLight.off{background:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.12)}
 .publishedBottom{margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}
+
+.managerTitleRow{display:flex;align-items:center;gap:8px}
+.managerTitleRow h1{flex:1;min-width:0}
+.managerInfoButton{display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;padding:0;background:transparent;color:#64748b;border-radius:50%;cursor:pointer}
+.managerInfoButton svg{display:block;width:23px;height:23px}
+.managerInfoButton:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+#managerHelp .sheet{max-width:620px;max-height:85dvh;padding:18px}
+#managerHelpTitle{font-size:18px;line-height:1.3;margin:0}
+#managerHelp .helpSteps{font-size:14px;line-height:1.5;margin:14px 0;padding-left:23px}
+#managerHelp .helpSteps li{padding-left:2px;margin:0 0 12px}
+#managerHelp .helpSteps li:last-child{margin-bottom:0}
+#managerHelp .helpNote{font-size:13px;line-height:1.5;background:#fff1f1;border-radius:12px;padding:10px 12px;margin-top:12px}
+#managerHelp code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em;overflow-wrap:anywhere}
+#managerHelp a{color:#2563eb;overflow-wrap:anywhere}
+#closeManagerHelp{padding:8px 12px;flex-shrink:0}
 </style>
 </head>
 <body>
-<header><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.32</span></h1><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.36</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card" style="padding:13px 16px">
   <details id="googleSettings">
@@ -124,6 +139,9 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 const SCOPES='https://www.googleapis.com/auth/script.projects https://www.googleapis.com/auth/script.deployments https://www.googleapis.com/auth/drive.metadata.readonly';
 const API='https://script.googleapis.com/v1';
 let tokenClient=null, accessToken='', tokenExpiresAt=0, selectedIndex=-1, selectedHtml='';
+let autoReconnectTried=false;
+const AUTO_RECONNECT_PAUSE_KEY='asm.autoReconnectPaused';
+let selectionRequestId=0,pendingProject=null;
 const $=id=>document.getElementById(id);
 let projects=JSON.parse(localStorage.getItem('asm.projects')||'[]');
 let hiddenProjectIds=JSON.parse(localStorage.getItem('asm.hiddenProjects')||'[]');
@@ -169,48 +187,47 @@ function setDeploySuccess(name,deployedAt,publishedUrl){
 }
 
 function save(){localStorage.setItem('asm.projects',JSON.stringify(projects))}
-let authRequestMode='manual';
-function finishGoogleConnection(r){
-  if(r.error){
-    if(authRequestMode==='manual')setStatus('Authorization error: '+r.error);
-    $('authState').textContent='Not connected';
-    refreshSettingsSummary();
-    return;
-  }
-  accessToken=r.access_token;
-  tokenExpiresAt=Date.now()+((Number(r.expires_in)||3600)*1000);
-  sessionStorage.setItem('asm.accessToken',accessToken);
-  sessionStorage.setItem('asm.tokenExpiresAt',String(tokenExpiresAt));
-  localStorage.removeItem('asm.autoReconnectDisabled');
-  $('authState').textContent='Connected';refreshSettingsSummary();
-  $('auth').textContent='Reconnect Google';
-  $('signout').classList.remove('hidden');
-  refreshDeployButton();
-  if(authRequestMode==='auto')setStatus('✅ Google reconnected automatically.');
-}
-function initTokenClient(showErrors=true){
+function initTokenClient(){
   const clientId=$('clientId').value.trim();
-  if(!clientId){if(showErrors)alert('Enter and save your OAuth Web Client ID first.');return false}
-  if(!window.google?.accounts?.oauth2){if(showErrors)alert('Google sign-in library is still loading. Try again in a moment.');return false}
-  tokenClient=google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPES,callback:finishGoogleConnection});
+  if(!clientId){alert('Enter and save your OAuth Web Client ID first.');return false}
+  if(!window.google?.accounts?.oauth2){alert('Google sign-in library is still loading. Try again in a moment.');return false}
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:clientId,scope:SCOPES,
+    callback:r=>{
+      if(r.error){
+        if(autoReconnectTried){$('authState').textContent='Not connected';refreshSettingsSummary();return}
+        setStatus('Authorization error: '+r.error);return
+      }
+      accessToken=r.access_token;
+      tokenExpiresAt=Date.now()+((Number(r.expires_in)||3600)*1000);
+      sessionStorage.setItem('asm.accessToken',accessToken);
+      sessionStorage.setItem('asm.tokenExpiresAt',String(tokenExpiresAt));
+      localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);
+      $('authState').textContent='Connected';refreshSettingsSummary();
+      $('auth').textContent='Reconnect Google';
+      $('signout').classList.remove('hidden');
+      refreshDeployButton();
+    }
+  });
   return true;
 }
-function tryAutoReconnect(attempt=0){
-  if(accessToken&&Date.now()<tokenExpiresAt)return;
-  if(localStorage.getItem('asm.autoReconnectDisabled')==='1')return;
+function requestGoogleAccess(promptValue=''){
+  if(!initTokenClient())return false;
+  tokenClient.requestAccessToken({prompt:promptValue});
+  return true;
+}
+function tryAutoReconnect(){
+  if(autoReconnectTried||accessToken||localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)==='1')return;
   if(!$('clientId').value.trim())return;
-  if(!window.google?.accounts?.oauth2){
-    if(attempt<15)setTimeout(()=>tryAutoReconnect(attempt+1),300);
-    return;
-  }
-  authRequestMode='auto';
+  if(!window.google?.accounts?.oauth2){setTimeout(tryAutoReconnect,250);return}
+  autoReconnectTried=true;
   $('authState').textContent='Reconnecting…';
   refreshSettingsSummary();
-  if(initTokenClient(false))tokenClient.requestAccessToken({prompt:''});
+  requestGoogleAccess('');
 }
-$('saveClient').onclick=()=>{localStorage.setItem('asm.clientId',$('clientId').value.trim());tokenClient=null;localStorage.removeItem('asm.autoReconnectDisabled');refreshSettingsSummary();setStatus('Client ID saved. Google will reconnect automatically when possible.');tryAutoReconnect()}
-$('auth').onclick=()=>{authRequestMode='manual';localStorage.removeItem('asm.autoReconnectDisabled');if(initTokenClient()) tokenClient.requestAccessToken({prompt:accessToken?'':'consent'})}
-$('signout').onclick=()=>{if(accessToken) google.accounts.oauth2.revoke(accessToken);accessToken='';tokenExpiresAt=0;localStorage.setItem('asm.autoReconnectDisabled','1');sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');$('authState').textContent='Not connected';$('auth').textContent='Connect Google';refreshSettingsSummary();$('signout').classList.add('hidden');refreshDeployButton();setStatus('Google disconnected. Automatic reconnection is paused until you connect again.')}
+$('saveClient').onclick=()=>{localStorage.setItem('asm.clientId',$('clientId').value.trim());tokenClient=null;autoReconnectTried=false;localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);refreshSettingsSummary();setStatus('Client ID saved. Connecting to Google…');tryAutoReconnect()}
+$('auth').onclick=()=>{autoReconnectTried=false;localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);requestGoogleAccess(accessToken?'':'consent')}
+$('signout').onclick=()=>{localStorage.setItem(AUTO_RECONNECT_PAUSE_KEY,'1');if(accessToken) google.accounts.oauth2.revoke(accessToken);accessToken='';tokenExpiresAt=0;sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');$('authState').textContent='Not connected';refreshSettingsSummary();$('auth').textContent='Connect Google';$('signout').classList.add('hidden');refreshDeployButton()}
 
 
 let discoveredProjects=[];
@@ -244,6 +261,11 @@ function hideDiscoveredProject(id,name){
   if(!confirm(`Remove "${name}" from this manager?\n\nYou can restore it later under Advanced → Removed projects. The Google Apps Script project itself will not be deleted.`))return;
   if(!isHiddenProject(id))hiddenProjectIds.push({id,name});
   saveHiddenProjects();
+  if(pendingProject?.scriptId===id){
+    ++selectionRequestId;pendingProject=null;selectedIndex=-1;
+    $('selected').querySelector('.selectedName').textContent='No project selected yet';
+    refreshSelectedPublished();refreshDeployButton();
+  }
   const savedIndex=projects.findIndex(x=>x.scriptId===id);
   if(savedIndex>=0){
     projects.splice(savedIndex,1); save();
@@ -292,9 +314,16 @@ function renderDiscovered(){
 
 async function prepareDiscovered(scriptId){
   const p=discoveredProjects.find(x=>x.id===scriptId); if(!p)return;
-  setStatus(`Checking ${p.name} deployments…`);
+  const requestId=++selectionRequestId;
+  pendingProject={name:p.name,scriptId};
+  selectedIndex=-1;
+  $('selected').querySelector('.selectedName').textContent=p.name;
+  refreshSelectedPublished();refreshDeployButton();
+  setStatus(`Checking ${p.name} deployments… You can choose the new HTML file while this finishes.`);
+  scrollToUpdating();
   try{
     const d=await api(`/projects/${encodeURIComponent(scriptId)}/deployments`);
+    if(requestId!==selectionRequestId)return;
     const web=(d.deployments||[]).filter(x=>Array.isArray(x.entryPoints)&&x.entryPoints.some(e=>e.entryPointType==='WEB_APP'));
     if(!web.length){setStatus(`⚠️ ${p.name} has no Web App deployment yet. You can still add it manually after creating a deployment in Apps Script.`);return}
 
@@ -307,10 +336,11 @@ async function prepareDiscovered(scriptId){
     let chosen=candidates[0];
     if(candidates.length>1){
       chosen=await chooseDeployment(p,candidates);
-      if(!chosen){setStatus(`No deployment selected for ${p.name}. Nothing changed.`);return}
+      if(requestId!==selectionRequestId)return;
+      if(!chosen){setStatus(`No deployment selected for ${p.name}. Select the project again to choose one.`);return}
     }
-    saveDiscoveredProject(p,scriptId,chosen);
-  }catch(e){setStatus(`❌ Could not read ${p.name}.\n${e.message}`)}
+    saveDiscoveredProject(p,scriptId,chosen,false);
+  }catch(e){if(requestId===selectionRequestId)setStatus(`❌ Could not read ${p.name}.\n${e.message}`)}
 }
 
 function webEntry(dep){return (dep.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')||{}}
@@ -328,11 +358,11 @@ function deploymentUrl(dep){
   return e?.webApp?.url||e?.webApp?.entryPointConfig?.url||'';
 }
 function fmtDate(v){if(!v)return '';const d=new Date(v);if(Number.isNaN(d.getTime())||d.getFullYear()<2000)return '';return d.toLocaleString()}
-function saveDiscoveredProject(p,scriptId,chosen){
+function saveDiscoveredProject(p,scriptId,chosen,scroll=true){
   let i=projects.findIndex(x=>x.scriptId===scriptId);
   const rec={name:p.name,scriptId,deploymentId:chosen.deploymentId};
   if(i<0){projects.push(rec);i=projects.length-1}else projects[i]=rec;
-  save();selectProject(i);setStatus(`✅ ${p.name} ready. Choose the new HTML file below.`);
+  save();selectProject(i,scroll);setStatus(selectedHtml?`✅ ${p.name} ready. Your HTML file is selected; you can Update & Deploy.`:`✅ ${p.name} ready. Choose the new HTML file below.`);
 }
 function chooseDeployment(p,web){
   return new Promise(resolve=>{
@@ -488,7 +518,17 @@ function refreshSelectedPublished(){
   link.textContent=url;
   wrap.classList.remove('hidden');
 }
-function selectProject(i){selectedIndex=i;$('selected').querySelector('.selectedName').textContent=projects[i].name;refreshSelectedPublished();refreshDeployButton();$('htmlFile').scrollIntoView({behavior:'smooth',block:'center'})}
+function scrollToUpdating(){
+  const section=$('selected').closest('.card');
+  const top=section.getBoundingClientRect().top+window.scrollY-document.querySelector('header').getBoundingClientRect().height-12;
+  window.scrollTo({top:Math.max(0,top),behavior:'auto'});
+}
+function selectProject(i,scroll=true){
+  ++selectionRequestId;pendingProject=null;selectedIndex=i;
+  $('selected').querySelector('.selectedName').textContent=projects[i].name;
+  refreshSelectedPublished();refreshDeployButton();
+  if(scroll)scrollToUpdating();
+}
 $('copyPublishedLink').onclick=async()=>{
   const url=selectedProjectUrl(); if(!url)return;
   try{await navigator.clipboard.writeText(url);setStatus('✅ Published link copied.')}
@@ -505,7 +545,7 @@ $('sharePublishedLink').onclick=async()=>{
 };
 
 $('htmlFile').onchange=async e=>{const f=e.target.files[0];selectedHtml=f?await f.text():'';$('fileName').textContent=f?`${f.name} — ${(f.size/1024).toFixed(0)} KB`:'No file selected';$('description').value=f?f.name.replace(/\.html$/i,''):'';refreshDeployButton()}
-function refreshDeployButton(){$('deploy').disabled=!(accessToken&&selectedIndex>=0&&selectedHtml)}
+function refreshDeployButton(){$('deploy').disabled=!(accessToken&&!pendingProject&&selectedIndex>=0&&selectedHtml)}
 async function api(path,opt={}){
   const r=await fetch(API+path,{...opt,headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json',...(opt.headers||{})}});
   const body=await r.text(); let data={}; try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
@@ -588,9 +628,71 @@ async function updateAndDeploy(){
 }
 $('deploy').onclick=()=>{const p=projects[selectedIndex];if(confirm(`Update ${p.name}'s Index.html and repoint its EXISTING deployment?`))updateAndDeploy()}
 
-(()=>{const t=sessionStorage.getItem('asm.accessToken'),e=Number(sessionStorage.getItem('asm.tokenExpiresAt')||0);if(t&&e>Date.now()+30000){accessToken=t;tokenExpiresAt=e;$('authState').textContent='Connected';refreshSettingsSummary();$('auth').textContent='Reconnect Google';$('signout').classList.remove('hidden');refreshDeployButton()}else{sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');setTimeout(()=>tryAutoReconnect(),150)}})();
+(()=>{
+  const t=sessionStorage.getItem('asm.accessToken'),e=Number(sessionStorage.getItem('asm.tokenExpiresAt')||0);
+  if(t&&e>Date.now()+30000){
+    accessToken=t;tokenExpiresAt=e;$('authState').textContent='Connected';refreshSettingsSummary();
+    $('auth').textContent='Reconnect Google';$('signout').classList.remove('hidden');refreshDeployButton();
+  }else{
+    sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');
+    if(localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)!=='1')setTimeout(tryAutoReconnect,250);
+  }
+})();
 
 renderHiddenProjects();
+</script>
+
+<div id="managerHelp" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="managerHelpTitle" tabindex="-1">
+  <div class="sheet">
+    <div class="row" style="flex-wrap:nowrap"><h2 id="managerHelpTitle" class="grow">Update this manager on GitHub</h2><button id="closeManagerHelp" type="button">Close</button></div>
+    <ol class="helpSteps">
+      <li><b>Delete the old download from Files first.</b> Open the Files app and go to the folder where you save this manager. If the old <code>index.html</code> is there (it may show as <code>index</code>), press and hold it, then tap <b>Delete</b>. Do this before downloading the new file to avoid the overwrite problem you are seeing in iOS 27.</li>
+      <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
+      <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
+      <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.36.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
+    </ol>
+    <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
+    <div class="small" style="margin-top:12px"><a href="https://docs.github.com/en/repositories/working-with-files/managing-files/adding-a-file-to-a-repository" target="_blank" rel="noopener noreferrer">GitHub upload help</a> · <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site" target="_blank" rel="noopener noreferrer">GitHub Pages help</a></div>
+  </div>
+</div>
+
+<script>
+(()=>{
+  const button=document.getElementById('managerInfoButton');
+  const dialog=document.getElementById('managerHelp');
+  const closeButton=document.getElementById('closeManagerHelp');
+  let previousFocus=null,previousOverflow='';
+  function openHelp(){
+    previousFocus=document.activeElement;
+    previousOverflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';
+    dialog.classList.remove('hidden');
+    button.setAttribute('aria-expanded','true');
+    closeButton.focus();
+  }
+  function closeHelp(){
+    if(dialog.classList.contains('hidden'))return;
+    dialog.classList.add('hidden');
+    button.setAttribute('aria-expanded','false');
+    document.body.style.overflow=previousOverflow;
+    if(previousFocus&&previousFocus.isConnected)previousFocus.focus();
+  }
+  button.addEventListener('click',openHelp);
+  closeButton.addEventListener('click',closeHelp);
+  dialog.addEventListener('click',event=>{if(event.target===dialog)closeHelp()});
+  document.addEventListener('keydown',event=>{
+    if(dialog.classList.contains('hidden'))return;
+    if(event.key==='Escape'){event.preventDefault();closeHelp();return}
+    if(event.key!=='Tab')return;
+    const items=Array.from(dialog.querySelectorAll('button,a[href]')).filter(el=>!el.disabled);
+    const first=items[0],last=items[items.length-1];
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+    else if(!dialog.contains(document.activeElement)){event.preventDefault();first.focus()}
+  });
+})();
 </script>
 </body>
 </html>
