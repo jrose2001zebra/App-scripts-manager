@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.38</title>
+<title>Apps Script Manager V2.39</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -68,7 +68,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.38</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.39</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card" style="padding:13px 16px">
   <details id="googleSettings">
@@ -217,9 +217,18 @@ function requestGoogleAccess(promptValue=''){
   tokenClient.requestAccessToken({prompt:promptValue});
   return true;
 }
+function isIOSBrowser(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+}
 function tryAutoReconnect(){
   if(autoReconnectTried||accessToken||localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)==='1')return;
   if(!$('clientId').value.trim())return;
+  if(isIOSBrowser()){
+    $('authState').textContent='Not connected';
+    refreshSettingsSummary();
+    return;
+  }
   if(!window.google?.accounts?.oauth2){setTimeout(tryAutoReconnect,250);return}
   autoReconnectTried=true;
   $('authState').textContent='Reconnecting…';
@@ -652,7 +661,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.38.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.39.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
