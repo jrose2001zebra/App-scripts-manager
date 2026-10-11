@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.40</title>
+<title>Apps Script Manager V2.41</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -68,7 +68,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.40</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.41</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card" style="padding:13px 16px">
   <details id="googleSettings">
@@ -109,6 +109,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 <section class="card">
   <h2 style="margin:0 0 8px;font-size:18px">2. Choose New HTML File</h2>
   <div id="selected">Updating: <span class="selectedName">No project selected yet</span></div>
+  <div class="row" style="margin-top:8px"><button id="changeDeployment" type="button" class="hidden">Change Deployment</button></div>
 
   <div class="small" style="margin-top:10px">Choose the new HTML file for the selected project. Its contents will replace the Apps Script project's <b>Index.html</b>; the local filename does not matter.</div>
   <label>New HTML file</label>
@@ -126,6 +127,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
     <div class="row publishedActions">
       <button id="copyPublishedLink" type="button">Copy Link</button>
       <button id="sharePublishedLink" type="button">Share</button>
+      <button id="savePublishedLink" type="button">Set App Link</button>
     </div>
   </div>
 </section>
@@ -179,12 +181,12 @@ function setStatus(x){$('status').textContent=x}
 function setDeploySuccess(name,deployedAt,publishedUrl){
   const box=$('status');
   box.textContent=`✅ ${name} updated successfully.\nDeployed ${deployedAt}`;
-  if(publishedUrl){
-    const p=projects[selectedIndex];
-    const m=publishedUrl.match(/\/macros\/s\/([^/]+)\/exec/);
-    if(p&&m&&m[1]&&p.deploymentId!==m[1]){p.deploymentId=m[1];save()}
-    refreshSelectedPublished();
+  const p=projects[selectedIndex];
+  if(p&&publishedUrl){
+    p.publishedUrl=publishedUrl;
+    save();
   }
+  refreshSelectedPublished();
 }
 
 function save(){localStorage.setItem('asm.projects',JSON.stringify(projects))}
@@ -323,8 +325,9 @@ function renderDiscovered(){
   box.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>prepareDiscovered(b.dataset.auto));
 }
 
-async function prepareDiscovered(scriptId){
-  const p=discoveredProjects.find(x=>x.id===scriptId); if(!p)return;
+async function prepareDiscovered(scriptId,forceChoice=false){
+  const stored=projects.find(x=>x.scriptId===scriptId);
+  const p=discoveredProjects.find(x=>x.id===scriptId)||(stored&&{id:scriptId,name:stored.name}); if(!p)return;
   const requestId=++selectionRequestId;
   pendingProject={name:p.name,scriptId};
   selectedIndex=-1;
@@ -344,8 +347,8 @@ async function prepareDiscovered(scriptId){
     // deployments that have a real numeric versionNumber.
     const versioned=web.filter(x=>Number.isInteger(x?.deploymentConfig?.versionNumber)&&x.deploymentConfig.versionNumber>0);
     const candidates=versioned.length?versioned:web;
-    let chosen=candidates[0];
-    if(candidates.length>1){
+    let chosen=candidates.find(x=>x.deploymentId===stored?.deploymentId)||candidates[0];
+    if(candidates.length>1&&(forceChoice||!candidates.some(x=>x.deploymentId===stored?.deploymentId))){
       chosen=await chooseDeployment(p,candidates);
       if(requestId!==selectionRequestId)return;
       if(!chosen){setStatus(`No deployment selected for ${p.name}. Select the project again to choose one.`);return}
@@ -355,33 +358,46 @@ async function prepareDiscovered(scriptId){
 }
 
 function webEntry(dep){return (dep.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')||{}}
+function validPublishedUrl(value,deploymentId){
+  if(typeof value!=='string'||!value.trim()||!deploymentId)return '';
+  try{
+    const url=new URL(value.trim());
+    const match=url.pathname.match(/^\/(?:macros|a\/macros\/[^/]+)\/s\/([^/]+)\/exec$/);
+    if(url.protocol!=='https:'||url.hostname!=='script.google.com'||url.port||url.username||url.password||
+       !match||decodeURIComponent(match[1])!==deploymentId)return '';
+    return value.trim();
+  }catch(_){return '';}
+}
 function deploymentUrl(dep){
-  // V2.18: Always present the stable public /macros/s/.../exec form for a
-  // versioned Web App deployment. Google may return a Workspace-account URL
-  // containing /a/macros/<domain>/s/...; that is useful internally but is not
-  // the portable URL we want users to save or add to their Home Screen.
-  const id=dep?.deploymentId;
-  if(id && id!=='HEAD') return `https://script.google.com/macros/s/${encodeURIComponent(id)}/exec`;
-
-  // HEAD/test deployments do not have a normal versioned public URL. Keep
-  // Google's exact URL only as a fallback for those unusual cases.
   const e=webEntry(dep);
-  return e?.webApp?.url||e?.webApp?.entryPointConfig?.url||'';
+  // Preserve Google's complete URL, including Workspace domain and account hints.
+  return validPublishedUrl(e?.webApp?.url||e?.webApp?.entryPointConfig?.url,dep?.deploymentId);
+}
+function projectPublishedUrl(project,dep){
+  // A user-supplied working link belongs to this exact deployment and survives updates.
+  const override=validPublishedUrl(project?.publishedUrlOverride,project?.deploymentId);
+  if(override)return override;
+  return deploymentUrl(dep)||validPublishedUrl(project?.publishedUrl,project?.deploymentId);
 }
 function fmtDate(v){if(!v)return '';const d=new Date(v);if(Number.isNaN(d.getTime())||d.getFullYear()<2000)return '';return d.toLocaleString()}
 function saveDiscoveredProject(p,scriptId,chosen,scroll=true){
   let i=projects.findIndex(x=>x.scriptId===scriptId);
-  const rec={name:p.name,scriptId,deploymentId:chosen.deploymentId};
+  const previous=projects[i];
+  const same=previous?.deploymentId===chosen.deploymentId;
+  const rec={name:p.name,scriptId,deploymentId:chosen.deploymentId,
+    publishedUrl:deploymentUrl(chosen)||(same?previous.publishedUrl:''),
+    publishedUrlOverride:same?previous.publishedUrlOverride:''};
   if(i<0){projects.push(rec);i=projects.length-1}else projects[i]=rec;
   save();selectProject(i,scroll);setStatus(selectedHtml?`✅ ${p.name} ready. Your HTML file is selected; you can Update & Deploy.`:`✅ ${p.name} ready. Choose the new HTML file below.`);
 }
 function chooseDeployment(p,web){
   return new Promise(resolve=>{
     const modal=$('deploymentModal'),box=$('deploymentChoices');
-    const saved=projects.find(x=>x.scriptId===p.id)?.deploymentId||'';
+    const savedProject=projects.find(x=>x.scriptId===p.id);
+    const saved=savedProject?.deploymentId||'';
     $('deploymentTitle').textContent=`${p.name}: choose deployment`; box.innerHTML='';
     web.forEach((dep,idx)=>{
-      const cfg=dep.deploymentConfig||{}; const url=deploymentUrl(dep); const isSaved=dep.deploymentId===saved;
+      const cfg=dep.deploymentConfig||{}; const isSaved=dep.deploymentId===saved; const url=isSaved?projectPublishedUrl(savedProject,dep):deploymentUrl(dep);
       const card=document.createElement('div'); card.className='deployChoice'+(isSaved?' saved':'');
       const desc=cfg.description||'Web App'; const ver=cfg.versionNumber!=null?`Version ${cfg.versionNumber}`:'Version not shown';
       const when=fmtDate(dep.updateTime||dep.createTime);
@@ -462,7 +478,7 @@ async function createNewProject(){
 
     const exactWebUrl=(deployment.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')?.webApp?.url||'';
     let i=projects.findIndex(x=>x.scriptId===project.scriptId);
-    const rec={name:title,scriptId:project.scriptId,deploymentId:deployment.deploymentId};
+    const rec={name:title,scriptId:project.scriptId,deploymentId:deployment.deploymentId,publishedUrl:deploymentUrl(deployment)};
     if(i<0){projects.push(rec);i=projects.length-1}else projects[i]=rec;
     save();
 
@@ -520,11 +536,13 @@ $('addProject').onclick=()=>{
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function selectedProjectUrl(){
   const p=projects[selectedIndex];
-  return p?.deploymentId ? `https://script.google.com/macros/s/${encodeURIComponent(p.deploymentId)}/exec` : '';
+  return projectPublishedUrl(p);
 }
 function refreshSelectedPublished(){
   const url=selectedProjectUrl(),wrap=$('selectedPublished'),link=$('selectedPublishedLink');
-  if(!url){wrap.classList.add('hidden');link.removeAttribute('href');return}
+  $('changeDeployment').classList.toggle('hidden',!projects[selectedIndex]);
+  if(!url){wrap.classList.toggle('hidden',!projects[selectedIndex]);link.removeAttribute('href');link.textContent='Select the project to retrieve its published link.';$('copyPublishedLink').disabled=true;$('sharePublishedLink').disabled=true;return}
+  $('copyPublishedLink').disabled=false;$('sharePublishedLink').disabled=false;
   link.href=url;
   link.textContent=url;
   wrap.classList.remove('hidden');
@@ -540,6 +558,18 @@ function selectProject(i,scroll=true){
   refreshSelectedPublished();refreshDeployButton();
   if(scroll)scrollToUpdating();
 }
+$('changeDeployment').onclick=()=>{
+  const p=projects[selectedIndex];if(p)void prepareDiscovered(p.scriptId,true);
+};
+$('savePublishedLink').onclick=()=>{
+  const p=projects[selectedIndex];if(!p)return;
+  const entered=prompt('Paste the working Web app URL copied from Google Apps Script → Manage deployments:',selectedProjectUrl());
+  if(entered===null)return;
+  const url=validPublishedUrl(entered,p.deploymentId);
+  if(!url){alert('Paste a script.google.com Web app link ending in /exec for this selected deployment.');return;}
+  p.publishedUrl=url;p.publishedUrlOverride=url;save();refreshSelectedPublished();
+  setStatus('✅ App link saved. Open, Copy Link, Share, and future updates will use this exact address.');
+};
 $('copyPublishedLink').onclick=async()=>{
   const url=selectedProjectUrl(); if(!url)return;
   try{await navigator.clipboard.writeText(url);setStatus('✅ Published link copied.')}
@@ -632,7 +662,7 @@ async function updateAndDeploy(){
       confirmedDeployment=await api(`/projects/${encodeURIComponent(p.scriptId)}/deployments/${encodeURIComponent(p.deploymentId)}`);
     }catch(_){/* Step 5 already succeeded; fall back to the update response. */}
     const deployedAt=new Date().toLocaleString([], {month:'numeric',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
-    const publishedUrl=deploymentUrl(confirmedDeployment)||deploymentUrl(updatedDeployment)||deploymentUrl(existingDeployment);
+    const publishedUrl=projectPublishedUrl(p,confirmedDeployment)||deploymentUrl(updatedDeployment)||deploymentUrl(existingDeployment);
     setDeploySuccess(p.name,deployedAt,publishedUrl);
   }catch(e){setStatus('❌ Update stopped at '+failedStep+'.\n'+e.message+'\n\nIf code was updated before a later step failed, the existing deployment was not repointed unless Step 5 completed.');}
   refreshDeployButton();
@@ -661,7 +691,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.40.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.41.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
