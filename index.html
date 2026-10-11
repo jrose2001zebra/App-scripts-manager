@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.44</title>
+<title>Apps Script Manager V2.45</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -32,7 +32,14 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 #googleSettings summary::-webkit-details-marker{display:none}
 #googleSettings summary:after{content:'⌄';font-size:20px;color:#64748b}
 #googleSettings[open] summary:after{content:'⌃'}
-#googleSettings .settingsBody{padding-top:14px}
+.connectionBar{position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px}
+.connectionBar #auth{padding:10px 14px;white-space:nowrap}
+.connectionStatus{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:650;color:#475569;white-space:nowrap}
+.connectionStatus .connectionLight{margin:0;width:10px;height:10px;flex:none}
+#googleSettings{margin-left:auto}
+#googleSettings summary{width:34px;height:34px;justify-content:center;border-radius:9px;background:#f1f5f9}
+#googleSettings summary:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+#googleSettings .settingsBody{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:10;padding:14px;background:white;border:1px solid #dce4ed;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.14)}
 #status a{display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-word;color:#1d4ed8;text-decoration:underline;margin-top:5px}
 
 .newProjectPublishedLink{display:block;margin-top:10px;color:#155eef;font-weight:700;text-decoration:underline;overflow-wrap:anywhere}
@@ -68,20 +75,16 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.44</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.45</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
-<section class="card" style="padding:13px 16px">
-  <div class="row" style="margin-bottom:10px">
-    <button id="auth" class="primary">Connect Google</button>
-    <span id="authState" class="small grow" role="status">Not connected</span>
-  </div>
+<section class="card connectionBar" aria-label="Google connection">
+  <button id="auth" class="primary">Connect</button>
+  <span class="connectionStatus"><span id="connectionLight" class="connectionLight off" aria-hidden="true"></span><span id="authState" role="status">Disconnected</span></span>
   <details id="googleSettings">
-    <summary><span>⚙️ Google Settings <span id="connectionLight" class="connectionLight off" aria-hidden="true"></span><span id="settingsSummary" class="small" style="font-weight:500">· Not connected</span></span></summary>
+    <summary aria-label="Connection options" title="Connection options"></summary>
     <div class="settingsBody">
-      <div class="row">
-        <button id="signout" class="hidden">Disconnect</button>
-      </div>
-      <label>Google OAuth Web Client ID</label>
+      <button id="signout" class="hidden">Disconnect</button>
+      <label for="clientId">Google OAuth Web Client ID</label>
       <input id="clientId" placeholder="123456789-...apps.googleusercontent.com">
       <div class="small" style="margin-top:8px">Stored only in this browser. Your authorized JavaScript origin must match this site's address.</div>
       <div class="row" style="margin-top:10px"><button id="saveClient">Save Client ID</button></div>
@@ -172,7 +175,7 @@ function renderHiddenProjects(){
 $('clientId').value=localStorage.getItem('asm.clientId')||DEFAULT_CLIENT_ID;
 function refreshSettingsSummary(){
   const connected=!!accessToken&&Date.now()<tokenExpiresAt;
-  $('settingsSummary').textContent=connected?'· Connected':($('clientId').value.trim()?'· Not connected':'· Setup required');
+  if(connected)$('authState').textContent='Connected';
   $('connectionLight').classList.toggle('on',connected);
   $('connectionLight').classList.toggle('off',!connected);
 }
@@ -199,13 +202,13 @@ function initTokenClient(){
   tokenClient=google.accounts.oauth2.initTokenClient({
     client_id:clientId,scope:SCOPES,
     error_callback:()=>{
-      $('authState').textContent='Connection not completed';
+      $('authState').textContent='Disconnected';
       refreshSettingsSummary();
-      setStatus('Google sign-in did not complete. Tap Connect/Reconnect Google to try again.');
+      setStatus('Google sign-in did not complete. Tap Connect/Reconnect to try again.');
     },
     callback:r=>{
       if(r.error){
-        if(autoReconnectTried){$('authState').textContent='Not connected';refreshSettingsSummary();return}
+        if(autoReconnectTried){$('authState').textContent='Disconnected';refreshSettingsSummary();return}
         setStatus('Authorization error: '+r.error);return
       }
       accessToken=r.access_token;
@@ -214,7 +217,7 @@ function initTokenClient(){
       sessionStorage.setItem('asm.tokenExpiresAt',String(tokenExpiresAt));
       localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);
       $('authState').textContent='Connected';refreshSettingsSummary();
-      $('auth').textContent='Reconnect Google';
+      $('auth').textContent='Reconnect';
       $('signout').classList.remove('hidden');
       refreshDeployButton();
     }
@@ -234,7 +237,7 @@ function tryAutoReconnect(){
   if(autoReconnectTried||accessToken||localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)==='1')return;
   if(!$('clientId').value.trim())return;
   if(isIOSBrowser()){
-    $('authState').textContent='Not connected';
+    $('authState').textContent='Disconnected';
     refreshSettingsSummary();
     return;
   }
@@ -246,7 +249,7 @@ function tryAutoReconnect(){
 }
 $('saveClient').onclick=()=>{localStorage.setItem('asm.clientId',$('clientId').value.trim());tokenClient=null;autoReconnectTried=false;localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);refreshSettingsSummary();setStatus('Client ID saved. Connecting to Google…');requestGoogleAccess('consent')}
 $('auth').onclick=()=>{autoReconnectTried=false;localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);requestGoogleAccess(accessToken&&Date.now()<tokenExpiresAt?'':'consent')}
-$('signout').onclick=()=>{localStorage.setItem(AUTO_RECONNECT_PAUSE_KEY,'1');if(accessToken) google.accounts.oauth2.revoke(accessToken);accessToken='';tokenExpiresAt=0;sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');$('authState').textContent='Not connected';refreshSettingsSummary();$('auth').textContent='Connect Google';$('signout').classList.add('hidden');refreshDeployButton()}
+$('signout').onclick=()=>{localStorage.setItem(AUTO_RECONNECT_PAUSE_KEY,'1');if(accessToken) google.accounts.oauth2.revoke(accessToken);accessToken='';tokenExpiresAt=0;sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');$('authState').textContent='Disconnected';refreshSettingsSummary();$('auth').textContent='Connect';$('signout').classList.add('hidden');refreshDeployButton()}
 
 
 let discoveredProjects=[];
@@ -523,7 +526,7 @@ $('discoverBtn').onclick=()=>{
   const connected=!!accessToken&&Date.now()<tokenExpiresAt;
   if(!connected){
     $('auth').scrollIntoView({behavior:'smooth',block:'center'});
-    setStatus('Google is not connected. Tap Connect/Reconnect Google above, then try Find Projects again.');
+    setStatus('Google is not connected. Tap Connect/Reconnect above, then try Find Projects again.');
     setTimeout(()=>{if($('auth'))$('auth').focus()},350);
     return;
   }
@@ -706,7 +709,7 @@ $('deploy').onclick=()=>{const p=projects[selectedIndex];if(confirm(`Update ${p.
   const t=sessionStorage.getItem('asm.accessToken'),e=Number(sessionStorage.getItem('asm.tokenExpiresAt')||0);
   if(t&&e>Date.now()+30000){
     accessToken=t;tokenExpiresAt=e;$('authState').textContent='Connected';refreshSettingsSummary();
-    $('auth').textContent='Reconnect Google';$('signout').classList.remove('hidden');refreshDeployButton();
+    $('auth').textContent='Reconnect';$('signout').classList.remove('hidden');refreshDeployButton();
   }else{
     sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');
     if(localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)!=='1')setTimeout(tryAutoReconnect,250);
@@ -717,8 +720,8 @@ function refreshConnectionOnReturn(){
   if(accessToken && Date.now()>=tokenExpiresAt){
     accessToken='';tokenExpiresAt=0;
     sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');
-    $('authState').textContent='Session expired — reconnect';
-    $('auth').textContent='Reconnect Google';
+    $('authState').textContent='Expired';
+    $('auth').textContent='Reconnect';
     $('signout').classList.add('hidden');
   }
   refreshSettingsSummary();refreshDeployButton();
@@ -738,7 +741,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.44.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.45.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
