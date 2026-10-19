@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.49</title>
+<title>Apps Script Manager V2.50</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -72,10 +72,12 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 #managerHelp code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em;overflow-wrap:anywhere}
 #managerHelp a{color:#2563eb;overflow-wrap:anywhere}
 #closeManagerHelp{padding:8px 12px;flex-shrink:0}
+.renameProject{background:#f1f5f9;color:#475569;padding:9px 11px!important;font-size:15px!important}
+.renameProject:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.49</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.50</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card connectionBar" aria-label="Google connection">
   <button id="auth" class="primary">Connect</button>
@@ -311,7 +313,7 @@ function renderDiscovered(){
     del.onclick=()=>hideDiscoveredProject(p.id,p.name);
     const d=document.createElement('div');d.className='project swipeFront';
     const updated=p.modifiedTime?new Date(p.modifiedTime).toLocaleString([], {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Update time unavailable';
-    d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">Updated ${esc(updated)}${p.ownedByMe===false?' · Shared':''}</div></div><div class="actions"><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
+    d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">Updated ${esc(updated)}${p.ownedByMe===false?' · Shared':''}</div></div><div class="actions"><button type="button" data-rename="${esc(p.id)}" aria-label="Rename ${esc(p.name)}" title="Rename project" class="renameProject">✎</button><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
     wrap.append(del,d);box.appendChild(wrap);
 
     let startX=0,startY=0,base=0,dragging=false;
@@ -333,7 +335,50 @@ function renderDiscovered(){
       d.dataset.open=open?'1':'0';wrap.classList.toggle('open',open);d.style.transform=`translateX(${open?-96:0}px)`;
     },{passive:true});
   });
+  box.querySelectorAll('[data-rename]').forEach(b=>b.onclick=()=>renameDiscoveredProject(b.dataset.rename));
   box.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>prepareDiscovered(b.dataset.auto));
+}
+
+// Request Drive write access only when renaming; ordinary sign-in keeps its original scopes.
+function requestRenameAccess(){
+  return new Promise((resolve,reject)=>{
+    if(!window.google?.accounts?.oauth2){reject(new Error('Google sign-in is not ready.'));return}
+    const client=google.accounts.oauth2.initTokenClient({
+      client_id:$('clientId').value.trim(),
+      scope:SCOPES+' https://www.googleapis.com/auth/drive',
+      include_granted_scopes:true,
+      callback:r=>r.error?reject(new Error(r.error)):resolve(r.access_token),
+      error_callback:e=>reject(new Error(e?.message||e?.type||'Google authorization was canceled.'))
+    });
+    client.requestAccessToken({prompt:''});
+  });
+}
+async function renameDiscoveredProject(scriptId){
+  const project=discoveredProjects.find(p=>p.id===scriptId);
+  if(!project)return;
+  if(project.ownedByMe===false){alert('This is a shared project. Rename it from an account with permission to edit its name.');return}
+  if(!accessToken||Date.now()>=tokenExpiresAt){setStatus('Connect Google before renaming a project.');return}
+  const entered=prompt('New Google Apps Script project name:',project.name);
+  if(entered===null)return;
+  const name=entered.trim();
+  if(!name||name===project.name){if(!name)alert('Enter a project name.');return}
+  if(!confirm(`Rename "${project.name}" to "${name}" in Google?\n\nThis changes the project name on all devices, but does not change the published URL or deployment.`))return;
+  setStatus(`Renaming ${project.name} in Google…`);
+  try{
+    const driveToken=await requestRenameAccess();
+    if(!driveToken)throw new Error('Google did not provide authorization for renaming.');
+    const url=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(scriptId)}?fields=id,name,modifiedTime`;
+    const response=await fetch(url,{method:'PATCH',headers:{Authorization:'Bearer '+driveToken,'Content-Type':'application/json'},body:JSON.stringify({name})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data?.error?.message||`Google Drive returned HTTP ${response.status}`);
+    project.name=data.name||name;
+    if(data.modifiedTime)project.modifiedTime=data.modifiedTime;
+    projects.forEach(p=>{if(p.scriptId===scriptId)p.name=project.name});
+    if(pendingProject?.scriptId===scriptId)pendingProject.name=project.name;
+    if(projects[selectedIndex]?.scriptId===scriptId)$('selected').querySelector('.selectedName').textContent=project.name;
+    save();renderDiscovered();
+    setStatus(`✅ Project renamed to ${project.name} in Google.`);
+  }catch(e){setStatus(`❌ Rename was not completed.\n${e.message}\n\nYour existing deployment was not changed.`)}
 }
 
 async function prepareDiscovered(scriptId,forceChoice=false){
@@ -783,7 +828,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.49.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.50.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
