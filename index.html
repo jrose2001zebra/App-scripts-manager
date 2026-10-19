@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.50</title>
+<title>Apps Script Manager V2.51</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -77,7 +77,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.50</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.51</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card connectionBar" aria-label="Google connection">
   <button id="auth" class="primary">Connect</button>
@@ -152,6 +152,7 @@ let tokenClient=null, accessToken='', tokenExpiresAt=0, selectedIndex=-1, select
 let autoReconnectTried=false;
 const AUTO_RECONNECT_PAUSE_KEY='asm.autoReconnectPaused';
 let selectionRequestId=0,pendingProject=null;
+let updateInProgress=false;
 const $=id=>document.getElementById(id);
 let projects=JSON.parse(localStorage.getItem('asm.projects')||'[]');
 let hiddenProjectIds=JSON.parse(localStorage.getItem('asm.hiddenProjects')||'[]');
@@ -303,6 +304,12 @@ function hideDiscoveredProject(id,name){
   renderDiscovered();
   setStatus(`✅ ${name} removed from this manager. It remains in Google Apps Script.`);
 }
+function setUpdateLock(locked){
+  updateInProgress=locked;
+  document.querySelectorAll('[data-auto],[data-rename],.swipeDelete').forEach(b=>b.disabled=locked);
+  ['discoverBtn','newProjectBtn','changeDeployment','addProject','htmlFile','description'].forEach(id=>{const e=$(id);if(e)e.disabled=locked;});
+  refreshDeployButton();
+}
 function renderDiscovered(){
   const term=$('projectSearch').value.trim().toLowerCase(); const box=$('discovered');box.innerHTML='';
   const list=discoveredProjects.filter(p=>!isHiddenProject(p.id)&&(!term||p.name.toLowerCase().includes(term)));
@@ -315,6 +322,7 @@ function renderDiscovered(){
     const updated=p.modifiedTime?new Date(p.modifiedTime).toLocaleString([], {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Update time unavailable';
     d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">Updated ${esc(updated)}${p.ownedByMe===false?' · Shared':''}</div></div><div class="actions"><button type="button" data-rename="${esc(p.id)}" aria-label="Rename ${esc(p.name)}" title="Rename project" class="renameProject">✎</button><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
     wrap.append(del,d);box.appendChild(wrap);
+    if(updateInProgress){del.disabled=true;d.querySelectorAll('button').forEach(b=>b.disabled=true);}
 
     let startX=0,startY=0,base=0,dragging=false;
     d.addEventListener('touchstart',e=>{
@@ -382,6 +390,7 @@ async function renameDiscoveredProject(scriptId){
 }
 
 async function prepareDiscovered(scriptId,forceChoice=false){
+  if(updateInProgress)return;
   const stored=projects.find(x=>x.scriptId===scriptId);
   const p=discoveredProjects.find(x=>x.id===scriptId)||(stored&&{id:scriptId,name:stored.name}); if(!p)return;
   const requestId=++selectionRequestId;
@@ -611,6 +620,7 @@ function scrollToUpdating(){
   window.scrollTo({top:Math.max(0,top),behavior:'auto'});
 }
 function selectProject(i,scroll=true){
+  if(updateInProgress)return;
   ++selectionRequestId;pendingProject=null;selectedIndex=i;
   $('selected').querySelector('.selectedName').textContent=projects[i].name;
   refreshSelectedPublished();refreshDeployButton();
@@ -644,7 +654,7 @@ $('sharePublishedLink').onclick=async()=>{
 };
 
 $('htmlFile').onchange=async e=>{const f=e.target.files[0];selectedHtml=f?await f.text():'';$('fileName').textContent=f?`${f.name} — ${(f.size/1024).toFixed(0)} KB`:'No file selected';$('description').value=f?f.name.replace(/\.html$/i,''):'';refreshDeployButton()}
-function refreshDeployButton(){$('deploy').disabled=!(accessToken&&Date.now()<tokenExpiresAt&&!pendingProject&&selectedIndex>=0&&selectedHtml)}
+function refreshDeployButton(){$('deploy').disabled=updateInProgress||!(accessToken&&Date.now()<tokenExpiresAt&&!pendingProject&&selectedIndex>=0&&selectedHtml)}
 async function api(path,opt={}){
   const r=await fetch(API+path,{...opt,headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json',...(opt.headers||{})}});
   const body=await r.text(); let data={}; try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
@@ -695,8 +705,8 @@ async function uploadProjectContent(path,files,originalFiles){
   }
 }
 async function updateAndDeploy(){
-  const p=projects[selectedIndex]; if(!p||!selectedHtml)return;
-  $('deploy').disabled=true;
+  const p=projects[selectedIndex]; if(updateInProgress||!p||!selectedHtml)return;
+  setUpdateLock(true);
   let failedStep='Step 1 — Verifying existing deployment';
   try{
     setStatus('1/5 Verifying existing deployment…');
@@ -767,9 +777,9 @@ async function updateAndDeploy(){
     const publishedUrl=projectPublishedUrl(p,confirmedDeployment)||deploymentUrl(updatedDeployment)||deploymentUrl(existingDeployment);
     setDeploySuccess(p.name,deployedAt,publishedUrl);
   }catch(e){setStatus('❌ Update stopped at '+failedStep+'.\n'+e.message+'\n\nIf code was updated before a later step failed, the existing deployment was not repointed unless Step 5 completed.');}
-  refreshDeployButton();
+  setUpdateLock(false);
 }
-$('deploy').onclick=()=>{const p=projects[selectedIndex];if(confirm(`Update ${p.name}'s Index.html and repoint its EXISTING deployment?`))updateAndDeploy()}
+$('deploy').onclick=()=>{if(updateInProgress)return;const p=projects[selectedIndex];if(confirm(`Update ${p.name}'s Index.html and repoint its EXISTING deployment?`))updateAndDeploy()}
 
 (()=>{
   const restored=readGoogleSession();
@@ -828,7 +838,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.50.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.51.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
