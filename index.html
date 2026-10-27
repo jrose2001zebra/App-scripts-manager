@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.53</title>
+<title>Apps Script Manager V2.55</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -42,8 +42,10 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 #googleSettings .settingsBody{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:10;padding:14px;background:white;border:1px solid #dce4ed;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.14)}
 #status a{display:block;max-width:100%;overflow-wrap:anywhere;word-break:break-word;color:#1d4ed8;text-decoration:underline;margin-top:5px}
 
+
 .newProjectPublishedLink{display:block;margin-top:10px;color:#155eef;font-weight:700;text-decoration:underline;overflow-wrap:anywhere}
 .newProjectPublishedLink:active{opacity:.7}
+
 
 .swipeProject{position:relative;overflow:hidden;border-radius:14px;margin-top:9px;background:transparent}
 .swipeDelete{position:absolute;right:0;top:50%;transform:translateY(-50%);width:auto;height:auto;padding:9px 10px;border:0;border-radius:12px;background:#dc2626;color:#fff;font-weight:850;font-size:13px;z-index:1;visibility:hidden;pointer-events:none}
@@ -57,6 +59,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 .connectionLight.on{background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.15),0 0 7px rgba(34,197,94,.55)}
 .connectionLight.off{background:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.12)}
 .publishedBottom{margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0}
+
 
 .managerTitleRow{display:flex;align-items:center;gap:8px}
 .managerTitleRow h1{flex:1;min-width:0}
@@ -77,7 +80,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.53</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.55</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card connectionBar" aria-label="Google connection">
   <button id="auth" class="primary">Connect</button>
@@ -93,6 +96,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
     </div>
   </details>
 </section>
+
 
 <section class="card">
   <div class="row"><h2 style="margin:0;font-size:18px" class="grow">1. Choose Project</h2><button id="newProjectBtn">➕ New Project</button><button id="discoverBtn" class="primary">Find Projects</button></div>
@@ -113,10 +117,12 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
   </details>
 </section>
 
+
 <section class="card">
   <h2 style="margin:0 0 8px;font-size:18px">2. Choose New HTML File</h2>
   <div id="selected">Updating: <span class="selectedName">No project selected yet</span></div>
   <div class="row" style="margin-top:8px"><button id="changeDeployment" type="button" class="hidden">Change Deployment</button></div>
+
 
   <div class="small" style="margin-top:10px">Choose the new HTML file for the selected project. Its contents will replace the Apps Script project's <b>Index.html</b>; the local filename does not matter.</div>
   <label>New HTML file</label>
@@ -140,8 +146,10 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </section>
 </main>
 
+
 <div id="newProjectModal" class="modal hidden"><div class="sheet"><div class="row"><h2 style="margin:0;font-size:20px" class="grow">Create New Apps Script Project</h2><button id="closeNewProject">Cancel</button></div><div class="small" style="margin-top:7px">Creates a new standalone Apps Script project, adds your HTML as <b>Index.html</b>, creates its first immutable version, and publishes the first Web App deployment.</div><label>Project name</label><input id="newProjectName" placeholder="e.g. My New App"><label>HTML file</label><input id="newProjectHtml" type="file" accept=".html,text/html"><div id="newProjectFileName" class="small" style="margin-top:8px">No file selected</div><div class="row" style="margin-top:14px"><button id="createNewProject" class="good" disabled>CREATE &amp; DEPLOY</button></div><div id="newProjectStatus" class="status" style="margin-top:12px">Ready.</div></div></div>
 <div id="deploymentModal" class="modal hidden"><div class="sheet"><div class="row"><h2 id="deploymentTitle" style="margin:0;font-size:20px" class="grow">Choose Web App deployment</h2><button id="closeDeployment">Cancel</button></div><div class="small" style="margin-top:7px">This project has more than one published Web App. Choose the deployment whose existing URL you want to keep updating.</div><div id="deploymentChoices"></div></div></div>
+
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
@@ -185,6 +193,7 @@ function refreshSettingsSummary(){
 refreshSettingsSummary();
 $('googleSettings').open=false;
 
+
 function setStatus(x){$('status').textContent=x}
 function setDeploySuccess(name,deployedAt,publishedUrl){
   const box=$('status');
@@ -196,6 +205,7 @@ function setDeploySuccess(name,deployedAt,publishedUrl){
   }
   refreshSelectedPublished();
 }
+
 
 function save(){localStorage.setItem('asm.projects',JSON.stringify(projects))}
 function initTokenClient(){
@@ -254,6 +264,8 @@ function tryAutoReconnect(){
 $('saveClient').onclick=()=>{localStorage.setItem('asm.clientId',$('clientId').value.trim());tokenClient=null;autoReconnectTried=false;localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);refreshSettingsSummary();setStatus('Client ID saved. Connecting to Google…');requestGoogleAccess('')}
 $('auth').onclick=()=>{autoReconnectTried=false;localStorage.removeItem(AUTO_RECONNECT_PAUSE_KEY);requestGoogleAccess('')}
 $('signout').onclick=()=>{localStorage.setItem(AUTO_RECONNECT_PAUSE_KEY,'1');if(accessToken) google.accounts.oauth2.revoke(accessToken);accessToken='';tokenExpiresAt=0;sessionStorage.removeItem('asm.accessToken');sessionStorage.removeItem('asm.tokenExpiresAt');localStorage.removeItem('asm.googleSession');$('authState').textContent='Disconnected';refreshSettingsSummary();$('auth').textContent='Connect';$('signout').classList.add('hidden');refreshDeployButton()}
+
+
 
 
 let discoveredProjects=[];
@@ -331,7 +343,7 @@ function setUpdateLock(locked){
   refreshDeployButton();
 }
 function lastDeployedFromDescription(description){
-  const m=String(description||'').match(/(?:^|\\n)Last deployed: ([^\\n]+)/);
+  const m=String(description||'').match(/(?:^|[\r\n])Last deployed: ([^\r\n]+)/);
   return m?m[1].trim():'';
 }
 function lastDeployedForProject(p){
@@ -352,6 +364,7 @@ function renderDiscovered(){
     d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">Updated ${esc(updated)}${p.ownedByMe===false?' · Shared':''}</div>${lastFile?`<div class="meta" style="overflow-wrap:anywhere">Last deployed: ${esc(lastFile)}</div>`:''}</div><div class="actions"><button type="button" data-rename="${esc(p.id)}" aria-label="Rename ${esc(p.name)}" title="Rename project" class="renameProject">✎</button><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
     wrap.append(del,d);box.appendChild(wrap);
     if(updateInProgress){del.disabled=true;d.querySelectorAll('button').forEach(b=>b.disabled=true);}
+
 
     let startX=0,startY=0,base=0,dragging=false;
     d.addEventListener('touchstart',e=>{
@@ -375,6 +388,7 @@ function renderDiscovered(){
   box.querySelectorAll('[data-rename]').forEach(b=>b.onclick=()=>renameDiscoveredProject(b.dataset.rename));
   box.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>prepareDiscovered(b.dataset.auto));
 }
+
 
 // Request Drive write access only when renaming; ordinary sign-in keeps its original scopes.
 function requestRenameAccess(){
@@ -418,6 +432,7 @@ async function renameDiscoveredProject(scriptId){
   }catch(e){setStatus(`❌ Rename was not completed.\n${e.message}\n\nYour existing deployment was not changed.`)}
 }
 
+
 async function prepareDiscovered(scriptId,forceChoice=false){
   if(updateInProgress)return;
   const stored=projects.find(x=>x.scriptId===scriptId);
@@ -434,6 +449,7 @@ async function prepareDiscovered(scriptId,forceChoice=false){
     if(requestId!==selectionRequestId)return;
     const web=(d.deployments||[]).filter(x=>Array.isArray(x.entryPoints)&&x.entryPoints.some(e=>e.entryPointType==='WEB_APP'));
     if(!web.length){setStatus(`⚠️ ${p.name} has no Web App deployment yet. You can still add it manually after creating a deployment in Apps Script.`);return}
+
 
     // Apps Script also returns its special HEAD/unversioned deployment. It can
     // expose a WEB_APP entry point, but it is not the immutable versioned
@@ -456,6 +472,7 @@ async function prepareDiscovered(scriptId,forceChoice=false){
     }
   }catch(e){if(requestId===selectionRequestId)setStatus(`❌ Could not read ${p.name}.\n${e.message}`)}
 }
+
 
 function webEntry(dep){return (dep?.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')||{}}
 function validPublishedUrl(value,deploymentId){
@@ -512,6 +529,8 @@ function chooseDeployment(p,web){
 }
 
 
+
+
 let newProjectHtmlText='',newProjectFilename='';
 let selectedHtmlFilename='';
 $('newProjectBtn').onclick=()=>{
@@ -519,6 +538,7 @@ $('newProjectBtn').onclick=()=>{
   $('newProjectName').value=''; $('newProjectHtml').value=''; newProjectHtmlText='';newProjectFilename='';
   $('newProjectFileName').textContent='No file selected'; $('newProjectStatus').textContent='Ready.';
   $('closeNewProject').textContent='Cancel';
+  $('closeNewProject').disabled=false;
   $('createNewProject').disabled=true; $('newProjectModal').classList.remove('hidden');
 };
 $('closeNewProject').onclick=()=>$('newProjectModal').classList.add('hidden');
@@ -535,12 +555,13 @@ async function createNewProject(){
   $('createNewProject').disabled=true;
   $('closeNewProject').disabled=true;
   const ns=x=>$('newProjectStatus').textContent=x;
-  let createdProject=null;
+  let createdProject=null, deployedSuccessfully=false;
   try{
     ns('1/4 Creating Apps Script project…');
     const project=await api('/projects',{method:'POST',body:JSON.stringify({title})});
     createdProject=project;
     if(!project.scriptId) throw new Error('Google created the project but did not return a Script ID.');
+
 
     ns('2/4 Adding Index.html and web-app files…');
     const starterCode=`function doGet() {\n  return HtmlService.createHtmlOutputFromFile('Index')\n    .setTitle(${JSON.stringify(title)})\n    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');\n}\n`;
@@ -560,12 +581,14 @@ async function createNewProject(){
       ]})
     });
 
+
     ns('3/4 Creating first immutable version…');
     const version=await api(`/projects/${encodeURIComponent(project.scriptId)}/versions`,{
       method:'POST',
       body:JSON.stringify({description:'Initial web app deployment'})
     });
     if(!Number.isInteger(version.versionNumber)) throw new Error('Google did not return a version number for the new project.');
+
 
     ns('4/4 Publishing first Web App deployment…');
     const deployment=await api(`/projects/${encodeURIComponent(project.scriptId)}/deployments`,{
@@ -579,11 +602,13 @@ async function createNewProject(){
     });
     if(!deployment.deploymentId) throw new Error('Google did not return a Deployment ID.');
 
+
     const exactWebUrl=(deployment.entryPoints||[]).find(e=>e.entryPointType==='WEB_APP')?.webApp?.url||'';
     let i=projects.findIndex(x=>x.scriptId===project.scriptId);
     const rec={name:title,scriptId:project.scriptId,deploymentId:deployment.deploymentId,publishedUrl:deploymentUrl(deployment),lastDeployedFile:newProjectFilename};
     if(i<0){projects.push(rec);i=projects.length-1}else projects[i]=rec;
     save();
+
 
     $('newProjectStatus').textContent='';
     const summary=document.createElement('div');
@@ -603,8 +628,11 @@ async function createNewProject(){
       $('newProjectStatus').appendChild(link);
     }
     $('closeNewProject').textContent='Done';
+    $('closeNewProject').disabled=false;
+    deployedSuccessfully=true;
     setStatus(`✅ ${title} is now a published Web App and is saved in this manager.`);
     selectProject(i);
+
 
     // Refresh the Google project list in the background so the new project is visible there too.
     try{ await discoverProjects(); }catch(_){}
@@ -612,9 +640,11 @@ async function createNewProject(){
     const created=createdProject?.scriptId?`\n\nScript ID:\n${createdProject.scriptId}`:'';
     ns('❌ New project setup stopped.\n'+e.message+created+'\n\nIf an earlier step completed, the project may already exist in Google. This manager will not create another copy unless you tap CREATE & DEPLOY again.');
   }
-  refreshNewProjectButton();
+  $('closeNewProject').disabled=false;
+  if(!deployedSuccessfully)refreshNewProjectButton();
 }
 $('createNewProject').onclick=()=>{if(confirm(`Create and publish a new Web App named "${$('newProjectName').value.trim()}"?`))createNewProject()};
+
 
 $('discoverBtn').onclick=()=>{
   const connected=!!accessToken&&Date.now()<tokenExpiresAt;
@@ -627,6 +657,7 @@ $('discoverBtn').onclick=()=>{
   discoverProjects();
 };
 $('projectSearch').oninput=renderDiscovered;
+
 
 $('addProject').onclick=()=>{
   const p={name:$('pName').value.trim(),scriptId:$('scriptId').value.trim(),deploymentId:$('deploymentId').value.trim()};
@@ -688,6 +719,7 @@ $('sharePublishedLink').onclick=async()=>{
     catch{prompt('Copy this published link:',url)}
   }
 };
+
 
 $('htmlFile').onchange=async e=>{const f=e.target.files[0];selectedHtmlFilename=f?.name||'';selectedHtml=f?await f.text():'';$('fileName').textContent=f?`${f.name} — ${(f.size/1024).toFixed(0)} KB`:'No file selected';$('description').value=f?f.name.replace(/\.html$/i,''):'';refreshDeployButton()}
 function refreshDeployButton(){$('deploy').disabled=updateInProgress||!(accessToken&&Date.now()<tokenExpiresAt&&!pendingProject&&selectedIndex>=0&&selectedHtml)}
@@ -752,6 +784,7 @@ async function updateAndDeploy(){
     if(!Array.isArray(existingDeployment?.entryPoints) || !existingDeployment.entryPoints.some(e=>e.entryPointType==='WEB_APP'))
       throw new Error('That deployment is not a Web App deployment. Nothing was changed.');
 
+
     failedStep='Step 2 — Reading existing project';
     setStatus('2/5 Reading existing project…');
     const content=await api(`/projects/${encodeURIComponent(p.scriptId)}/content`);
@@ -761,6 +794,7 @@ async function updateAndDeploy(){
     if(!html){html={name:'Index',type:'HTML',source:selectedHtml};files.push(html)} else html.source=selectedHtml;
     if(!files.some(f=>f.name==='appsscript'&&f.type==='JSON')) throw new Error('Project manifest appsscript.json was not returned. Nothing was changed.');
 
+
     failedStep='Step 3 — Updating Index.html';
     const uploadBody=JSON.stringify({files});
     const htmlBytes=new Blob([selectedHtml]).size;
@@ -768,6 +802,7 @@ async function updateAndDeploy(){
     const tokenSeconds=Math.max(0,Math.floor((tokenExpiresAt-Date.now())/1000));
     const networkInfo=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
     const networkLabel=networkInfo?.effectiveType||'not reported';
+
 
     // V2.16 diagnostic preflight: this is deliberately READ-ONLY. It verifies that
     // Safari is online, the OAuth token still works, and Google is reachable
@@ -779,6 +814,7 @@ async function updateAndDeploy(){
     const preflightStarted=performance.now();
     await api(`/projects/${encodeURIComponent(p.scriptId)}/content`,{method:'GET',cache:'no-store'});
     const preflightElapsed=((performance.now()-preflightStarted)/1000).toFixed(1);
+
 
     failedStep='Step 3 — Updating Index.html';
     const uploadStarted=performance.now();
@@ -793,9 +829,11 @@ async function updateAndDeploy(){
       throw new Error(`${uploadError.message}\n\nUpload diagnostics:\nPreflight GET: PASSED (${preflightElapsed}s)\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nToken remaining: ${Math.max(0,Math.floor((tokenExpiresAt-Date.now())/1000))}s\nBrowser online: ${navigator.onLine?'yes':'no'}\nNetwork: ${networkLabel}\nFailure type: ${kind}\nFailed after: ${elapsed} seconds\n\n${isolation}`);
     }
 
+
     failedStep='Step 4 — Creating immutable version';
     setStatus('4/5 Creating immutable version…');
     const version=await api(`/projects/${encodeURIComponent(p.scriptId)}/versions`,{method:'POST',body:JSON.stringify({description:$('description').value.trim()||'Mobile update'})});
+
 
     failedStep='Step 5 — Updating existing deployment';
     setStatus(`5/5 Updating existing deployment to version ${version.versionNumber}…`);
@@ -819,6 +857,7 @@ async function updateAndDeploy(){
 }
 $('deploy').onclick=()=>{if(updateInProgress)return;const p=projects[selectedIndex];if(confirm(`Update ${p.name}'s Index.html and repoint its EXISTING deployment?`))updateAndDeploy()}
 
+
 (()=>{
   const restored=readGoogleSession();
   const paused=localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)==='1';
@@ -831,6 +870,7 @@ $('deploy').onclick=()=>{if(updateInProgress)return;const p=projects[selectedInd
     if(localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)!=='1')setTimeout(tryAutoReconnect,250);
   }
 })();
+
 
 function readGoogleSession(){
   if(localStorage.getItem(AUTO_RECONNECT_PAUSE_KEY)==='1')return null;
@@ -868,6 +908,7 @@ setInterval(refreshConnectionOnReturn,30000);
 renderHiddenProjects();
 </script>
 
+
 <div id="managerHelp" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="managerHelpTitle" tabindex="-1">
   <div class="sheet">
     <div class="row" style="flex-wrap:nowrap"><h2 id="managerHelpTitle" class="grow">Update this manager on GitHub</h2><button id="closeManagerHelp" type="button">Close</button></div>
@@ -876,13 +917,14 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.53.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.55.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
     <div class="small" style="margin-top:12px"><a href="https://docs.github.com/en/repositories/working-with-files/managing-files/adding-a-file-to-a-repository" target="_blank" rel="noopener noreferrer">GitHub upload help</a> · <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site" target="_blank" rel="noopener noreferrer">GitHub Pages help</a></div>
   </div>
 </div>
+
 
 <script>
 (()=>{
