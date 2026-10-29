@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.55</title>
+<title>Apps Script Manager V2.56</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
 *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
@@ -80,7 +80,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.55</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.56</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card connectionBar" aria-label="Google connection">
   <button id="auth" class="primary">Connect</button>
@@ -287,25 +287,7 @@ async function discoverProjects(){
       const d=await googleApi(url); all.push(...(d.files||[])); pageToken=d.nextPageToken||'';
     }while(pageToken);
     discoveredProjects=all; renderDiscovered();
-    // Fetch deployment descriptions to recover filenames saved by other devices.
-    const visible=all.filter(p=>!isHiddenProject(p.id));
-    let cursor=0;
-    await Promise.all(Array.from({length:Math.min(4,visible.length)},async()=>{
-      while(cursor<visible.length){
-        const item=visible[cursor++];
-        try{
-          const response=await api(`/projects/${encodeURIComponent(item.id)}/deployments`);
-          const saved=projects.find(x=>x.scriptId===item.id);
-          const versioned=(response.deployments||[]).filter(d=>Number.isInteger(d.deploymentConfig?.versionNumber)&&d.deploymentConfig.versionNumber>0);
-          const chosen=versioned.find(d=>d.deploymentId===saved?.deploymentId)||versioned.sort((a,b)=>new Date(b.updateTime||0)-new Date(a.updateTime||0))[0];
-          const filename=lastDeployedFromDescription(chosen?.deploymentConfig?.description);
-          if(filename){
-            if(saved){saved.lastDeployedFile=filename;}
-            else projects.push({name:item.name,scriptId:item.id,deploymentId:chosen.deploymentId,lastDeployedFile:filename});
-          }
-        }catch(_){/* Keep listing projects even if metadata is inaccessible. */}
-      }
-    }));
+    // Listing projects uses Drive only. Deployment metadata is loaded on selection.
     save();renderDiscovered();
     $('projectSearch').classList.toggle('hidden',!all.length);
     setStatus(all.length?`Found ${all.length} Apps Script project${all.length===1?'':'s'}. Choose one with Select.`:'No standalone Apps Script projects were found in this account.');
@@ -445,7 +427,7 @@ async function prepareDiscovered(scriptId,forceChoice=false){
   setStatus(`Checking ${p.name} deployments… You can choose the new HTML file while this finishes.`);
   scrollToUpdating();
   try{
-    const d=await api(`/projects/${encodeURIComponent(scriptId)}/deployments`);
+    const d=await selectedDeploymentList(scriptId,forceChoice);
     if(requestId!==selectionRequestId)return;
     const web=(d.deployments||[]).filter(x=>Array.isArray(x.entryPoints)&&x.entryPoints.some(e=>e.entryPointType==='WEB_APP'));
     if(!web.length){setStatus(`⚠️ ${p.name} has no Web App deployment yet. You can still add it manually after creating a deployment in Apps Script.`);return}
@@ -723,12 +705,53 @@ $('sharePublishedLink').onclick=async()=>{
 
 $('htmlFile').onchange=async e=>{const f=e.target.files[0];selectedHtmlFilename=f?.name||'';selectedHtml=f?await f.text():'';$('fileName').textContent=f?`${f.name} — ${(f.size/1024).toFixed(0)} KB`:'No file selected';$('description').value=f?f.name.replace(/\.html$/i,''):'';refreshDeployButton()}
 function refreshDeployButton(){$('deploy').disabled=updateInProgress||!(accessToken&&Date.now()<tokenExpiresAt&&!pendingProject&&selectedIndex>=0&&selectedHtml)}
-async function api(path,opt={}){
-  const r=await fetch(API+path,{...opt,headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json',...(opt.headers||{})}});
-  const body=await r.text(); let data={}; try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
-  if(!r.ok) throw new Error(data?.error?.message||body||('HTTP '+r.status));
-  return data;
+// Management requests share one paced queue. Only explicit quota rejections retry;
+// ambiguous network failures never blindly repeat version/deployment mutations.
+let managementQueue=Promise.resolve(),nextManagementAt=0;
+const deploymentMetadata=new Map(),deploymentPending=new Map(),MANAGEMENT_SPACING_MS=1500,METADATA_TTL_MS=60000;
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function forgetDeploymentMetadata(scriptId){deploymentMetadata.delete(scriptId);}
+async function selectedDeploymentList(scriptId,force=false){
+  const cached=deploymentMetadata.get(scriptId);
+  if(!force&&cached&&Date.now()-cached.at<METADATA_TTL_MS)return cached.data;
+  if(deploymentPending.has(scriptId))return deploymentPending.get(scriptId);
+  const pending=api(`/projects/${encodeURIComponent(scriptId)}/deployments`).then(data=>{
+    deploymentMetadata.set(scriptId,{at:Date.now(),data});return data;
+  });
+  deploymentPending.set(scriptId,pending);
+  try{return await pending;}finally{if(deploymentPending.get(scriptId)===pending)deploymentPending.delete(scriptId);}
 }
+
+function quotaRejected(status,data){
+  const message=data?.error?.message||'',details=JSON.stringify(data?.error?.details||[]);
+  return status===429||(status===403&&/quota|rate.?limit|RESOURCE_EXHAUSTED/i.test(message+' '+details));
+}
+async function waitForQuota(ms){
+  const until=Date.now()+ms;
+  while(Date.now()<until){
+    setStatus(`Google's request limit was reached. Retrying the same step in ${Math.ceil((until-Date.now())/1000)} seconds…\nKeep this page open. This request will retry automatically.`);
+    await pause(Math.min(1000,until-Date.now()));
+  }
+}
+function api(path,opt={}){
+  const task=async()=>{
+    for(let attempt=0;;attempt++){
+      await pause(Math.max(0,nextManagementAt-Date.now()));
+      if(!accessToken||Date.now()>=tokenExpiresAt)throw new Error('Google connection expired. Reconnect before trying again.');
+      nextManagementAt=Date.now()+MANAGEMENT_SPACING_MS;
+      const r=await fetch(API+path,{...opt,headers:{Authorization:'Bearer '+accessToken,'Content-Type':'application/json',...(opt.headers||{})}});
+      const body=await r.text();let data={};try{data=body?JSON.parse(body):{}}catch{data={raw:body}}
+      if(r.ok)return data;
+      if(quotaRejected(r.status,data)&&attempt<2){
+        const raw=r.headers.get('Retry-After'),seconds=Number(raw),retryAfter=raw?(Number.isFinite(seconds)?seconds*1000:Date.parse(raw)-Date.now()):0;
+        await waitForQuota(Math.max(61000*(attempt+1),Number.isFinite(retryAfter)?retryAfter:0));continue;
+      }
+      throw new Error(data?.error?.message||body||('HTTP '+r.status));
+    }
+  };
+  const pending=managementQueue.then(task,task);managementQueue=pending.catch(()=>{});return pending;
+}
+
 function projectFileSources(files){
   return files.map(({name,type,source})=>({name,type,source}));
 }
@@ -751,11 +774,15 @@ function uploadWithProgress(path,body){
     xhr.send(body);
   });
 }
+function pacedAlternateUpload(path,body){
+  const task=async()=>{await pause(Math.max(0,nextManagementAt-Date.now()));nextManagementAt=Date.now()+MANAGEMENT_SPACING_MS;return uploadWithProgress(path,body);};
+  const pending=managementQueue.then(task,task);managementQueue=pending.catch(()=>{});return pending;
+}
 async function uploadProjectContent(path,files,originalFiles){
   const body=new Blob([JSON.stringify({files:projectFileSources(files)})],{type:'application/json'});
   const failures=[];
   for(let attempt=0;attempt<2;attempt++){
-    try{return await (attempt===0?api(path,{method:'PUT',body}):uploadWithProgress(path,body));}
+    try{return await (attempt===0?api(path,{method:'PUT',body}):pacedAlternateUpload(path,body));}
     catch(error){
       if(!(error instanceof TypeError))throw error;
       failures.push((attempt===0?'Primary':'Alternate')+': '+error.name+': '+error.message);
@@ -787,7 +814,9 @@ async function updateAndDeploy(){
 
     failedStep='Step 2 — Reading existing project';
     setStatus('2/5 Reading existing project…');
+    const readStarted=performance.now();
     const content=await api(`/projects/${encodeURIComponent(p.scriptId)}/content`);
+    const preflightElapsed=((performance.now()-readStarted)/1000).toFixed(1);
     const originalFiles=projectFileSources(content.files||[]);
     const files=projectFileSources(originalFiles);
     let html=files.find(f=>f.name==='Index'&&f.type==='HTML');
@@ -804,21 +833,11 @@ async function updateAndDeploy(){
     const networkLabel=networkInfo?.effectiveType||'not reported';
 
 
-    // V2.16 diagnostic preflight: this is deliberately READ-ONLY. It verifies that
-    // Safari is online, the OAuth token still works, and Google is reachable
-    // immediately before the existing updateContent PUT. It does not change the
-    // project or deployment workflow.
-    failedStep='Step 3 preflight — Checking Google connection';
-    setStatus(`3/5 Preflight check before upload…\n\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nToken remaining: ${tokenSeconds}s\nBrowser online: ${navigator.onLine?'yes':'no'}\nNetwork: ${networkLabel}`);
-    if(!navigator.onLine) throw new Error('Safari reports that the device is offline. Nothing was changed.');
-    const preflightStarted=performance.now();
-    await api(`/projects/${encodeURIComponent(p.scriptId)}/content`,{method:'GET',cache:'no-store'});
-    const preflightElapsed=((performance.now()-preflightStarted)/1000).toFixed(1);
-
+    if(!navigator.onLine)throw new Error('The browser reports that it is offline. Nothing was changed.');
 
     failedStep='Step 3 — Updating Index.html';
     const uploadStarted=performance.now();
-    setStatus(`3/5 Updating Index.html…\n\nPreflight GET: passed in ${preflightElapsed}s\nToken remaining: ${Math.max(0,Math.floor((tokenExpiresAt-Date.now())/1000))}s\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nWaiting for Google response…`);
+    setStatus(`3/5 Updating Index.html…\n\nProject read: passed in ${preflightElapsed}s\nToken remaining: ${Math.max(0,Math.floor((tokenExpiresAt-Date.now())/1000))}s\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nWaiting for Google response…`);
     try{
       await uploadProjectContent(`/projects/${encodeURIComponent(p.scriptId)}/content`,files,originalFiles);
     }catch(uploadError){
@@ -826,12 +845,13 @@ async function updateAndDeploy(){
       const isBrowserFailure=uploadError instanceof TypeError;
       const kind=isBrowserFailure?'Browser could not expose an upload response':'Upload did not complete or could not be verified';
       const isolation='The successful GET confirms read access. It does not test the browser’s cross-origin PUT permission or establish why the upload failed.';
-      throw new Error(`${uploadError.message}\n\nUpload diagnostics:\nPreflight GET: PASSED (${preflightElapsed}s)\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nToken remaining: ${Math.max(0,Math.floor((tokenExpiresAt-Date.now())/1000))}s\nBrowser online: ${navigator.onLine?'yes':'no'}\nNetwork: ${networkLabel}\nFailure type: ${kind}\nFailed after: ${elapsed} seconds\n\n${isolation}`);
+      throw new Error(`${uploadError.message}\n\nUpload diagnostics:\nProject read: PASSED (${preflightElapsed}s)\nHTML: ${(htmlBytes/1024).toFixed(0)} KB\nComplete request: ${(requestBytes/1024).toFixed(0)} KB\nProject files: ${files.length}\nToken remaining: ${Math.max(0,Math.floor((tokenExpiresAt-Date.now())/1000))}s\nBrowser online: ${navigator.onLine?'yes':'no'}\nNetwork: ${networkLabel}\nFailure type: ${kind}\nFailed after: ${elapsed} seconds\n\n${isolation}`);
     }
 
 
     failedStep='Step 4 — Creating immutable version';
     setStatus('4/5 Creating immutable version…');
+    forgetDeploymentMetadata(p.scriptId);
     const version=await api(`/projects/${encodeURIComponent(p.scriptId)}/versions`,{method:'POST',body:JSON.stringify({description:$('description').value.trim()||'Mobile update'})});
 
 
@@ -850,6 +870,7 @@ async function updateAndDeploy(){
     const deployedAt=new Date().toLocaleString([], {month:'numeric',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
     const publishedUrl=projectPublishedUrl(p,confirmedDeployment)||deploymentUrl(updatedDeployment)||deploymentUrl(existingDeployment);
     p.lastDeployedFile=selectedHtmlFilename;
+    forgetDeploymentMetadata(p.scriptId);
     save();renderDiscovered();
     setDeploySuccess(p.name,deployedAt,publishedUrl);
   }catch(e){setStatus('❌ Update stopped at '+failedStep+'.\n'+e.message+'\n\nIf code was updated before a later step failed, the existing deployment was not repointed unless Step 5 completed.');}
@@ -917,7 +938,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.55.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.56.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
