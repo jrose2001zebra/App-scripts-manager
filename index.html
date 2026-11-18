@@ -693,6 +693,19 @@ async function createNewProject(){
       link.className='newProjectPublishedLink';
       link.textContent=exactWebUrl;
       $('newProjectStatus').appendChild(link);
+      const actions=document.createElement('div');
+      actions.className='row publishedActions';
+      const copyButton=document.createElement('button');
+      copyButton.type='button';
+      copyButton.textContent='Copy Link';
+      const copyStatus=document.createElement('span');
+      copyStatus.className='small';
+      copyStatus.setAttribute('role','status');
+      copyButton.onclick=async()=>{
+        if(await copyPublishedUrl(exactWebUrl))copyStatus.textContent='Published link copied.';
+      };
+      actions.append(copyButton,copyStatus);
+      $('newProjectStatus').appendChild(actions);
     }
     $('closeNewProject').textContent='Done';
     $('closeNewProject').disabled=false;
@@ -778,10 +791,13 @@ $('savePublishedLink').onclick=()=>{
   p.publishedUrl=url;p.publishedUrlOverride=url;save();refreshSelectedPublished();
   setStatus('✅ App link saved. Open, Copy Link, Share, and future updates will use this exact address.');
 };
+async function copyPublishedUrl(url){
+  try{await navigator.clipboard.writeText(url);return true}
+  catch{prompt('Copy this published link:',url);return false}
+}
 $('copyPublishedLink').onclick=async()=>{
-  const url=selectedProjectUrl(); if(!url)return;
-  try{await navigator.clipboard.writeText(url);setStatus('✅ Published link copied.')}
-  catch{prompt('Copy this published link:',url)}
+  const url=selectedProjectUrl();
+  if(url&&await copyPublishedUrl(url))setStatus('✅ Published link copied.');
 };
 $('sharePublishedLink').onclick=async()=>{
   const url=selectedProjectUrl(),p=projects[selectedIndex]; if(!url)return;
