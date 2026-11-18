@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Apps Script Manager V2.61</title>
 <style>
-:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#102344}
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--page-navy:#102344;color:#14213d;background:var(--page-navy)}
 *{box-sizing:border-box} body{margin:0;min-height:100vh}
-header{padding:max(18px,env(safe-area-inset-top)) 18px 16px;background:#fff;border-bottom:1px solid #dbe3ec;position:sticky;top:0;z-index:5}
-h1{font-size:24px;margin:3px 0}.sub{color:#64748b;font-size:14px}
+header{padding:max(18px,env(safe-area-inset-top)) 18px 16px;background:var(--page-navy);color:#fff;border-bottom:1px solid #395273;position:sticky;top:0;z-index:5}
+h1{font-size:24px;margin:3px 0}.sub{color:#cbd5e1;font-size:14px}
 main{max-width:760px;margin:auto;padding:16px 16px calc(28px + env(safe-area-inset-bottom))}
 .card{background:#fff;border:1px solid #dce4ed;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 18px rgba(15,23,42,.06)}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.grow{flex:1}
@@ -63,9 +63,9 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 
 .managerTitleRow{display:flex;align-items:center;gap:8px}
 .managerTitleRow h1{flex:1;min-width:0}
-.managerInfoButton{display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;padding:0;background:transparent;color:#64748b;border-radius:50%;cursor:pointer}
+.managerInfoButton{display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;padding:0;background:transparent;color:#cbd5e1;border-radius:50%;cursor:pointer}
 .managerInfoButton svg{display:block;width:23px;height:23px}
-.managerInfoButton:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.managerInfoButton:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
 #managerHelp .sheet{max-width:620px;max-height:85dvh;padding:18px}
 #managerHelpTitle{font-size:18px;line-height:1.3;margin:0}
 #managerHelp .helpSteps{font-size:14px;line-height:1.5;margin:14px 0;padding-left:23px}
@@ -85,7 +85,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#64748b">V2.61</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#cbd5e1">V2.61</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div><div class="sub">Find, update, and redeploy your Apps Script projects from iPhone.</div></header>
 <main>
 <section class="card connectionBar" aria-label="Google connection">
   <button id="auth" class="primary">Connect</button>
