@@ -7,8 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Apps Script Manager V2.61</title>
 <style>
-:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#eef3f8}
-*{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(#f8fbff,#e8eff7)}
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14213d;background:#102344}
+*{box-sizing:border-box} body{margin:0;min-height:100vh}
 header{padding:max(18px,env(safe-area-inset-top)) 18px 16px;background:#fff;border-bottom:1px solid #dbe3ec;position:sticky;top:0;z-index:5}
 h1{font-size:24px;margin:3px 0}.sub{color:#64748b;font-size:14px}
 main{max-width:760px;margin:auto;padding:16px 16px calc(28px + env(safe-area-inset-bottom))}
@@ -135,7 +135,10 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
   <div id="fileName" class="small" style="margin-top:8px">No file selected</div>
   <label>Version description <span style="font-weight:400">(automatically updated when you choose a file)</span></label>
   <input id="description" placeholder="e.g. Dig Dug V2.16">
-  <h2 style="margin:18px 0 6px;font-size:18px">3. Update &amp; Deploy</h2>
+</section>
+
+<section class="card">
+  <h2 style="margin:0 0 8px;font-size:18px">3. Update &amp; Deploy</h2>
   <div class="small">This creates a new Apps Script version and updates the project's existing Web App deployment, keeping the same published URL.</div>
   <div class="row" style="margin-top:12px"><button id="deploy" class="good" disabled>UPDATE &amp; DEPLOY</button></div>
   <div id="status" class="status" style="margin-top:12px">Ready.</div>
