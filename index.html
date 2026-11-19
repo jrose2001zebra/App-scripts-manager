@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Apps Script Manager V2.62</title>
+<title>Apps Script Manager V2.63</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--page-navy:#102344;color:#14213d;background:var(--page-navy)}
 *{box-sizing:border-box} body{margin:0;min-height:100vh}
@@ -77,6 +77,10 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 #closeManagerHelp{padding:8px 12px;flex-shrink:0}
 .renameProject{background:#f1f5f9;color:#475569;padding:9px 11px!important;font-size:15px!important}
 .renameProject:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+/* Desktop-visible Remove control; swipe-to-remove remains available on touch devices. */
+.deleteProject{display:inline-flex;align-items:center;justify-content:center;background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;border-radius:9px;padding:9px 10px!important;font-size:15px!important;cursor:pointer}
+.deleteProject:hover{background:#fecaca;color:#991b1b}
+.deleteProject:focus-visible{outline:2px solid #b91c1c;outline-offset:2px}
 .confirmDialog{width:min(440px,calc(100% - 32px));max-height:calc(100% - 32px);margin:auto;border:1px solid #dce4ed;color:#172033}
 .confirmDialog::backdrop{background:rgba(15,23,42,.58)}
 .confirmDialog h2{margin:0;font-size:20px}
@@ -85,7 +89,7 @@ button:disabled{opacity:.45}.status{font-size:14px;padding:11px 12px;border-radi
 </style>
 </head>
 <body>
-<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#cbd5e1">V2.62</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div></header>
+<header><div class="managerTitleRow"><h1>🚀 Apps Script Manager <span style="font-size:12px;color:#cbd5e1">V2.63</span></h1><button id="managerInfoButton" class="managerInfoButton" type="button" aria-label="How to update this manager on GitHub" aria-haspopup="dialog" aria-controls="managerHelp" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="7.5" r="1.1" fill="currentColor"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button></div></header>
 <main>
 <section class="card connectionBar" aria-label="Google connection">
   <button id="auth" class="primary">Connect</button>
@@ -369,7 +373,7 @@ async function hideDiscoveredProject(id,name){
 }
 function setUpdateLock(locked){
   updateInProgress=locked;
-  document.querySelectorAll('[data-auto],[data-rename],.swipeDelete').forEach(b=>b.disabled=locked);
+  document.querySelectorAll('[data-auto],[data-rename],[data-delete],.swipeDelete').forEach(b=>b.disabled=locked);
   ['discoverBtn','newProjectBtn','changeDeployment','addProject','htmlFile','description'].forEach(id=>{const e=$(id);if(e)e.disabled=locked;});
   refreshDeployButton();
 }
@@ -392,7 +396,7 @@ function renderDiscovered(){
     const d=document.createElement('div');d.className='project swipeFront';
     const updated=p.modifiedTime?new Date(p.modifiedTime).toLocaleString([], {month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'Update time unavailable';
     const lastFile=lastDeployedForProject(p);
-    d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">Updated ${esc(updated)}${p.ownedByMe===false?' · Shared':''}</div>${lastFile?`<div class="meta" style="overflow-wrap:anywhere">Last deployed: ${esc(lastFile)}</div>`:''}</div><div class="actions"><button type="button" data-rename="${esc(p.id)}" aria-label="Rename ${esc(p.name)}" title="Rename project" class="renameProject">✎</button><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
+    d.innerHTML=`<div><div class="name">${esc(p.name)}</div><div class="meta">Updated ${esc(updated)}${p.ownedByMe===false?' · Shared':''}</div>${lastFile?`<div class="meta" style="overflow-wrap:anywhere">Last deployed: ${esc(lastFile)}</div>`:''}</div><div class="actions"><button type="button" data-rename="${esc(p.id)}" aria-label="Rename ${esc(p.name)}" title="Rename project" class="renameProject">✎</button><button type="button" data-delete="${esc(p.id)}" aria-label="Remove ${esc(p.name)} from manager" title="Remove project from manager" class="deleteProject" style="line-height:1" ><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 10v7"/><path d="M14 10v7"/></svg></button><button class="primary" data-auto="${esc(p.id)}">Select</button></div>`;
     wrap.append(del,d);box.appendChild(wrap);
     if(updateInProgress){del.disabled=true;d.querySelectorAll('button').forEach(b=>b.disabled=true);}
 
@@ -417,6 +421,7 @@ function renderDiscovered(){
     },{passive:true});
   });
   box.querySelectorAll('[data-rename]').forEach(b=>b.onclick=()=>renameDiscoveredProject(b.dataset.rename));
+  box.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{const p=discoveredProjects.find(x=>x.id===b.dataset.delete);if(p&&!updateInProgress)void hideDiscoveredProject(p.id,p.name);});
   box.querySelectorAll('[data-auto]').forEach(b=>b.onclick=()=>prepareDiscovered(b.dataset.auto));
 }
 
@@ -1050,7 +1055,7 @@ renderHiddenProjects();
       <li><b>Download and name the new file.</b> In ChatGPT, tap <b>Download</b> for the updated manager. At that time, enter only <b><code>index</code></b>, using a lowercase <b>i</b>. The <code>.html</code> extension is added automatically, so you do not need to type it. Choose your folder in Files and tap <b>Save</b>.</li>
       <li><b>Open your GitHub repository.</b> In Safari, open <a href="https://github.com/jrose2001zebra/App-scripts-manager" target="_blank" rel="noopener noreferrer">App-scripts-manager</a> and sign in if needed. On the <b>Code</b> tab, stay in the main file list on the <code>main</code> branch.</li>
       <li><b>Upload the replacement.</b> Tap <b>Add file → Upload files → choose your files</b>. Browse to your saved <code>index.html</code> and select it. Uploading the same filename here updates the existing file.</li>
-      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.62.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
+      <li><b>Commit the update.</b> Add a short message such as “Update manager V2.63.” Choose <b>Commit directly to the main branch</b>, then tap <b>Commit changes</b>.</li>
       <li><b>Open the updated manager.</b> GitHub Pages publishes automatically using your existing settings. Allow up to <b>10 minutes</b>, then refresh your usual manager link in Safari and check the version in the title. You can also find the link under <b>Settings → Pages → Visit site</b>.</li>
     </ol>
     <div class="helpNote">Enter only <b><code>index</code></b> when naming the download. <code>.html</code> is added automatically, so the finished file is <b><code>index.html</code></b>.</div>
